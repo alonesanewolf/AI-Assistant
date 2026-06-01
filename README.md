@@ -86,6 +86,7 @@ ollama pull qwen2:7b
 AI_Assistant/
 ├── assistant.py          # 命令行 AI 助手
 ├── local_assistant.py    # Web UI 本地助手
+├── wechat_assistant.py   # 企业微信 AI 助手
 ├── actions.py            # 电脑操控动作集
 ├── model_router.py       # AI 模型智能路由
 ├── memory.py             # 记忆与对话管理
@@ -96,7 +97,7 @@ AI_Assistant/
 ├── brain.py              # 云端大脑
 ├── qq_bot.py             # QQ Bot
 ├── telegram_bot.py       # Telegram Bot
-├── wechat_bot.py         # 微信 Bot
+├── wechat_bot.py         # 微信 SDK
 └── requirements.txt      # 依赖列表
 ```
 
