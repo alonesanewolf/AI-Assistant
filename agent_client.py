@@ -60,22 +60,28 @@ COMMAND_BLACKLIST = [
 
 
 def is_command_safe(command: str) -> bool:
-    """检查命令是否安全"""
+    """检查命令是否安全（防止命令注入和串联绕过）"""
     cmd_lower = command.lower().strip()
+
+    # 检测危险分隔符（防止命令串联绕过白名单）
+    dangerous_separators = ["&&", "||", ";", "|", "`", "$(", "${"]
+    for sep in dangerous_separators:
+        if sep in cmd_lower:
+            return False
 
     # 检查黑名单
     for pattern in COMMAND_BLACKLIST:
         if pattern in cmd_lower:
             return False
 
-    # 检查白名单（如果配置了白名单）
+    # 检查白名单
     if COMMAND_WHITELIST:
         for allowed in COMMAND_WHITELIST:
             if cmd_lower.startswith(allowed.lower()):
                 return True
         return False
 
-    return True
+    return False  # 默认拒绝，除非白名单为空
 
 
 # ==================== 指令执行器 ====================
@@ -383,7 +389,7 @@ class CommandExecutor:
         """模拟键盘输入文字"""
         try:
             import pyautogui
-            pyautogui.typewrite(text, interval=0.05)
+            pyautogui.write(text, interval=0.05)
             return f"已输入文字 ({len(text)} 字符)"
         except ImportError:
             return "需要安装 pyautogui"

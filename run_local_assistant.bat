@@ -19,7 +19,7 @@ echo [启动] 正在启动本地 AI 助手...
 echo.
 
 :: 设置环境变量
-set BRAIN_URL=http://122.51.97.86:5000
+if "%BRAIN_URL%"=="" set BRAIN_URL=http://localhost:5000
 set ENABLE_BRAIN_AGENT=true
 
 :: 启动

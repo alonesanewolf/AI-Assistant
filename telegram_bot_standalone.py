@@ -20,9 +20,9 @@ from typing import Callable, Optional
 
 # ==================== 配置 ====================
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8898227219:AAHd2KbeaZ_HUbt6H1EaPDmzBLW1dibby6E")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_API_BASE = "https://api.telegram.org"
-BRAIN_API_URL = os.environ.get("BRAIN_URL", "http://122.51.97.86:5000")
+BRAIN_API_URL = os.environ.get("BRAIN_URL", "http://localhost:5000")
 
 
 class TelegramBotStandalone:

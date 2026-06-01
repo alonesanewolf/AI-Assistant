@@ -1,6 +1,7 @@
 """
-DeepSeek AI 智能助手 - 主程序
-整合记忆、电脑操作、网页搜索、定时任务等功能
+AI 智能助手 - 主程序
+整合双模型路由、记忆、电脑操作、网页搜索、定时任务等功能
+支持 DeepSeek（云端）+ Ollama（本地）双模型自动切换
 """
 
 import sys
@@ -8,24 +9,18 @@ import io
 import re
 from datetime import datetime
 from typing import Optional
-from openai import OpenAI
 
 # 修复 Windows GBK 编码问题，强制使用 UTF-8
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from config import (
-    DEEPSEEK_API_KEY,
-    DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL,
-    MAX_MEMORY_TURNS,
-    API_TIMEOUT,
-)
+from config import MAX_MEMORY_TURNS
 from memory import MemoryStore
 from actions import ComputerActions
 from search import WebSearch
 from scheduler import TaskScheduler
+from model_router import ModelRouter
 
 # ==================== 系统提示词 ====================
 
@@ -69,41 +64,34 @@ class Assistant:
     """智能助手主类"""
 
     def __init__(self):
-        # DeepSeek 客户端
-        self.client = OpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url=DEEPSEEK_BASE_URL,
-            timeout=API_TIMEOUT,
-        )
-        self.model = DEEPSEEK_MODEL
+        # 模型路由器（支持 DeepSeek + Ollama 双模型）
+        self.router = ModelRouter()
         self.max_turns = MAX_MEMORY_TURNS
 
         # 功能模块
         self.memory = MemoryStore()
         self.actions = ComputerActions()
-        self.search = WebSearch()
         self.scheduler = TaskScheduler()
+
+        # 搜索模块（带 AI 摘要能力）
+        self.search = WebSearch(ai_summarizer=self._ai_summarize_search)
 
         # 启动调度器
         self.scheduler.start()
 
-    # ==================== API 调用 ====================
+    # ==================== AI 对话 ====================
 
     def test_connection(self) -> bool:
-        """测试 API 连接"""
-        print("[连接测试] 正在测试 DeepSeek API 连接...")
+        """测试 AI 模型连接"""
+        print("[连接测试] 正在测试 AI 模型连接...")
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": "请回复'连接成功'"}],
-                max_tokens=20,
-            )
-            reply = response.choices[0].message.content
-            print(f"[连接测试] API 响应: {reply}")
-            print("[连接测试] ✓ DeepSeek API 连接正常")
+            messages = [{"role": "user", "content": "请回复'连接成功'"}]
+            reply = self.router.chat(messages, temperature=0.1)
+            print(f"[连接测试] 响应: {reply[:100]}")
+            print(f"[连接测试] ✓ 模型连接正常")
             return True
         except Exception as e:
-            print(f"[连接测试] ✗ API 连接失败: {e}")
+            print(f"[连接测试] ✗ 连接失败: {e}")
             return False
 
     def chat(self, user_input: str) -> str:
@@ -123,17 +111,42 @@ class Assistant:
         history = self.memory.get_recent_messages(self.max_turns * 2)
         messages.extend(history)
 
-        # 调用 API
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-        )
-        reply = response.choices[0].message.content
+        # 通过模型路由器调用
+        reply = self.router.chat(messages)
 
         # 保存 AI 回复到数据库
         self.memory.add_message("assistant", reply)
 
         return reply
+
+    def _ai_summarize_search(self, query: str, items: list) -> str:
+        """用 AI 对搜索结果做智能摘要"""
+        if not items:
+            return ""
+
+        # 构建搜索上下文
+        context_parts = []
+        for i, item in enumerate(items[:3], 1):
+            context_parts.append(
+                f"{i}. 标题: {item['title']}\n"
+                f"   摘要: {item['snippet']}\n"
+                f"   链接: {item['link']}"
+            )
+        context = "\n\n".join(context_parts)
+
+        prompt = (
+            f"用户搜索了: \"{query}\"\n\n"
+            f"以下是搜索结果:\n{context}\n\n"
+            f"请用 2-3 句话简洁地总结这些搜索结果的核心内容，"
+            f"并告诉用户最有用的信息是什么。用中文回复。"
+        )
+
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            summary = self.router.chat(messages, temperature=0.3)
+            return f"📊 搜索结果摘要:\n{summary}"
+        except Exception:
+            return ""
 
     # ==================== Action 解析与执行 ====================
 
@@ -197,8 +210,19 @@ class Assistant:
             name = parts[0].strip()
             seconds = int(parts[1].strip())
             action_desc = parts[2].strip() if len(parts) > 2 else "无具体操作"
+
+            def make_callback(task_name, desc):
+                def callback():
+                    print(f"\n[定时任务] {task_name}: {desc}")
+                    actions = self._parse_actions(desc)
+                    if actions:
+                        for at, ap in actions:
+                            result = self._execute_action(at, ap)
+                            print(f"  结果: {result}")
+                return callback
+
             task_id = self.scheduler.add_interval_task(
-                name, lambda a=action_desc: print(f"\n[定时任务] {name}: {a}"), seconds
+                name, make_callback(name, action_desc), seconds
             )
             return f"定时任务已添加: [{task_id}] {name} (每 {seconds} 秒)"
 
@@ -209,8 +233,19 @@ class Assistant:
             name = parts[0].strip()
             time_str = parts[1].strip()
             action_desc = parts[2].strip() if len(parts) > 2 else "无具体操作"
+
+            def make_callback(task_name, desc):
+                def callback():
+                    print(f"\n[定时任务] {task_name}: {desc}")
+                    actions = self._parse_actions(desc)
+                    if actions:
+                        for at, ap in actions:
+                            result = self._execute_action(at, ap)
+                            print(f"  结果: {result}")
+                return callback
+
             task_id = self.scheduler.add_daily_task(
-                name, lambda a=action_desc: print(f"\n[定时任务] {name}: {a}"), time_str
+                name, make_callback(name, action_desc), time_str
             )
             return f"定时任务已添加: [{task_id}] {name} (每天 {time_str})"
 

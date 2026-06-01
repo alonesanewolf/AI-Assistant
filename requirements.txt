@@ -1,26 +1,37 @@
-# 云端大脑 Brain 依赖
+# ==================== 核心依赖 ====================
 flask>=3.0.0
 flask-socketio>=5.3.0
+python-socketio>=5.11.0
 openai>=1.30.0
-redis>=5.0.0
 requests>=2.31.0
-python-socketio>=5.11.0
-websocket-client>=1.7.0
 
-# QQ Bot 依赖（可选，需要 OneBot v11 时启用）
-# python-socketio 已包含
+# ==================== AI 模型 ====================
+# DeepSeek（通过 openai 库调用）
 
-# 微信依赖（可选）
-# itchat  # 个人微信（已停止维护，不推荐）
+# Ollama 本地模型（可选）
+# 安装: https://ollama.com/
 
-# Telegram Bot（手机遥控）
-# requests 已包含
-
-# Agent 客户端 + 本地助手依赖（本地电脑安装）
-python-socketio>=5.11.0
-pyperclip>=1.8.0
-pycaw>=20230407  # Windows 音量控制
+# ==================== 电脑操作 ====================
 Pillow>=10.0.0
-pyautogui>=0.9.50  # 截图/键盘鼠标模拟
-comtypes>=1.2.0  # pycaw 依赖
-flask-socketio>=5.3.0  # 本地助手 Web 服务
+pyautogui>=0.9.50           # 截图/键盘鼠标模拟
+pyperclip>=1.8.0            # 剪贴板读写
+
+# ==================== 可选依赖 ====================
+# 定时任务
+schedule>=1.2.0
+
+# 网页搜索
+beautifulsoup4>=4.12.0
+
+# 系统监控（可选）
+# psutil>=5.9.0
+
+# Windows 音量控制（可选，安装较复杂）
+# pycaw>=20230407
+# comtypes>=1.2.0
+
+# Redis 消息队列（仅云端 Brain 需要）
+# redis>=5.0.0
+
+# WebSocket 客户端（Agent 连接 Brain 需要）
+websocket-client>=1.7.0

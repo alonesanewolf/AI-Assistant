@@ -322,7 +322,7 @@ class ComputerActions:
         """模拟键盘输入文字"""
         try:
             import pyautogui
-            pyautogui.typewrite(text, interval=0.05)
+            pyautogui.write(text, interval=0.05)
             return f"已输入文字 ({len(text)} 字符)"
         except ImportError:
             return "需要安装 pyautogui: pip install pyautogui"

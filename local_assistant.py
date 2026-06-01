@@ -50,7 +50,7 @@ PORT = 8080
 AGENT_NAME = os.environ.get("AGENT_NAME", os.environ.get("COMPUTERNAME", "我的电脑"))
 
 # 云端 Brain 地址（保持串联）
-BRAIN_URL = os.environ.get("BRAIN_URL", "http://122.51.97.86:5000")
+BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:5000")
 ENABLE_BRAIN_AGENT = os.environ.get("ENABLE_BRAIN_AGENT", "true").lower() == "true"
 
 # ==================== Flask + SocketIO ====================
@@ -1141,10 +1141,6 @@ def handle_chat_message(data: dict):
         print(f"[错误] chat_message: {e}")
         emit("chat_error", {"error": str(e)})
 
-    except Exception as e:
-        print(f"[错误] chat_message: {e}")
-        emit("chat_error", {"error": str(e)})
-
 
 # ==================== 云端 Brain Agent 串联 ====================
 
@@ -1260,169 +1256,11 @@ def brain_agent_loop():
 
 def execute_agent_command(command: str, params: str) -> str:
     """
-    执行云端大脑发来的指令（和 agent_client.py 的逻辑一致）
-    支持截图、系统操作、文件操作等
+    执行云端大脑发来的指令（统一复用 agent_client 的 CommandExecutor）
     """
-    params = (params or "").strip()
-
-    if command == "screenshot":
-        try:
-            import base64
-            import pyautogui
-            from io import BytesIO
-
-            screenshot = pyautogui.screenshot()
-            buffer = BytesIO()
-            screenshot.save(buffer, format="JPEG", quality=70)
-            b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
-            return f"BASE64_JPEG:{b64_data}"
-        except ImportError:
-            return "需要安装 pyautogui"
-        except Exception as e:
-            return f"截图失败: {e}"
-
-    elif command == "open_website":
-        import webbrowser
-        url = params
-        if not url.startswith(("http://", "https://")):
-            url = "https://" + url
-        webbrowser.open(url)
-        return f"已打开网页: {url}"
-
-    elif command == "open_app":
-        import subprocess
-        try:
-            subprocess.Popen(params, shell=True)
-            return f"已启动: {params}"
-        except Exception as e:
-            return f"启动失败: {e}"
-
-    elif command == "create_file":
-        parts = params.split("|", 1)
-        path = parts[0].strip()
-        content = parts[1] if len(parts) > 1 else ""
-        try:
-            p = Path(path)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content, encoding="utf-8")
-            return f"文件已创建: {path}"
-        except Exception as e:
-            return f"创建失败: {e}"
-
-    elif command == "read_file":
-        try:
-            return Path(params).read_text(encoding="utf-8")
-        except Exception as e:
-            return f"读取失败: {e}"
-
-    elif command == "file_info":
-        p = Path(params) if params else Path(".")
-        if not p.exists():
-            return f"路径不存在: {params}"
-        items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))[:20]
-        lines = []
-        for item in items:
-            prefix = "[DIR]" if item.is_dir() else "[FILE]"
-            size = ""
-            if item.is_file():
-                size = f" ({item.stat().st_size} bytes)"
-            lines.append(f"  {prefix}  {item.name}{size}")
-        return "\n".join(lines) if lines else "目录为空"
-
-    elif command == "run_command":
-        import subprocess
-        try:
-            result = subprocess.run(params, shell=True, capture_output=True, text=True, timeout=30)
-            return (result.stdout or result.stderr).strip() or "命令执行完毕"
-        except subprocess.TimeoutExpired:
-            return "命令超时"
-        except Exception as e:
-            return f"执行失败: {e}"
-
-    elif command == "get_time":
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    elif command == "system_info":
-        return actions.get_system_info()
-
-    elif command == "lock_screen":
-        import ctypes
-        ctypes.windll.user32.LockWorkStation()
-        return "屏幕已锁定"
-
-    elif command == "get_processes":
-        import subprocess
-        try:
-            filter_kw = params.lower() if params else ""
-            result = subprocess.run("tasklist", shell=True, capture_output=True, text=True, timeout=10)
-            lines = result.stdout.split("\n")[:30]
-            if filter_kw:
-                lines = [l for l in lines if filter_kw in l.lower()]
-            return "\n".join(lines) if lines else "无匹配进程"
-        except Exception as e:
-            return f"获取进程失败: {e}"
-
-    elif command == "kill_process":
-        import subprocess
-        try:
-            subprocess.run(f"taskkill /F /IM {params}", shell=True, capture_output=True, timeout=10)
-            return f"已终止: {params}"
-        except Exception as e:
-            return f"终止失败: {e}"
-
-    elif command == "volume_control":
-        try:
-            from ctypes import cast, POINTER
-            from comtypes import CLSCTX_ALL
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
-
-            if params == "up":
-                current = volume.GetMasterVolumeLevelScalar()
-                volume.SetMasterVolumeLevelScalar(min(1.0, current + 0.1), None)
-                return f"音量已增大 ({int(min(1.0, current + 0.1) * 100)}%)"
-            elif params == "down":
-                current = volume.GetMasterVolumeLevelScalar()
-                volume.SetMasterVolumeLevelScalar(max(0.0, current - 0.1), None)
-                return f"音量已减小 ({int(max(0.0, current - 0.1) * 100)}%)"
-            elif params == "mute":
-                muted = volume.GetMute()
-                volume.SetMute(not muted, None)
-                return "已静音" if not muted else "已取消静音"
-            else:
-                return f"当前音量: {int(volume.GetMasterVolumeLevelScalar() * 100)}%"
-        except ImportError:
-            return "音量控制需要安装 pycaw"
-        except Exception as e:
-            return f"音量控制失败: {e}"
-
-    elif command == "type_text":
-        try:
-            import pyautogui
-            pyautogui.write(params)
-            return f"已输入: {params}"
-        except ImportError:
-            return "需要安装 pyautogui"
-        except Exception as e:
-            return f"输入失败: {e}"
-
-    elif command == "press_keys":
-        try:
-            import pyautogui
-            keys = [k.strip().lower() for k in params.split("+")]
-            pyautogui.hotkey(*keys)
-            return f"已按键: {params}"
-        except ImportError:
-            return "需要安装 pyautogui"
-        except Exception as e:
-            return f"按键失败: {e}"
-
-    else:
-        return f"不支持的指令: {command}"
-
+    from agent_client import CommandExecutor
+    success, result = CommandExecutor.execute(command, params)
+    return result
 
 # ==================== 启动 ====================
 
