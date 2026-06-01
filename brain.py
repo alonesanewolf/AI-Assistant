@@ -42,10 +42,10 @@ from model_router import ModelRouter
 
 # ==================== 配置 ====================
 
-# DeepSeek 配置（在 model_router.py 中已定义，此处保留兼容）
-DEEPSEEK_API_KEY = "REDACTED"
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-chat"
+# DeepSeek 配置（从环境变量读取，model_router.py 中已有统一入口）
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 # QQ Bot 配置
 QQ_BOT_ENABLED = os.environ.get("QQ_BOT_ENABLED", "").lower() == "true"
