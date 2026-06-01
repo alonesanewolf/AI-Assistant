@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+venv/
+.env
+
+# 数据库和内存文件
+*.db
+*.db-journal
+*.db-wal
+conversation_memory.json
+scheduled_tasks.json
+
+# 截图
+screenshot_*.png
+screenshot_*.jpg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 日志
+*.log
+
+# 临时文件
+$null
