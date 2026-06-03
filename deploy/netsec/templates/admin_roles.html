@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}角色权限{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-shield-lock-fill text-warning me-2"></i>角色权限</h2>
+        <p class="text-muted mb-0">管理平台角色与权限配置</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-info d-flex align-items-start border-0 shadow-sm mb-4">
+    <i class="bi bi-info-circle-fill text-info fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于角色权限：</strong>
+        当前平台采用简化角色模型，包含管理员和普通用户两种角色。管理员拥有所有权限，
+        普通用户只能使用已授权的功能模块。后续可扩展为 RBAC 多角色权限体系。
+    </div>
+</div>
+
+<!-- 角色卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-start border-primary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-shield-fill-check text-primary me-2"></i>管理员</h5>
+                    <span class="badge bg-primary">{{ admin_count }} 人</span>
+                </div>
+                <p class="text-muted">拥有系统全部权限，包括用户管理、题目管理、系统配置等。</p>
+                <hr>
+                <h6>权限范围：</h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>用户管理（增删改查）</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>题目管理（增删改查）</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>日志审计查看</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>所有安全工具使用</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>靶场环境管理</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>系统配置修改</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-person-fill text-success me-2"></i>普通用户</h5>
+                    <span class="badge bg-success">{{ normal_count }} 人</span>
+                </div>
+                <p class="text-muted">可使用平台安全工具和靶场练习功能，无法管理其他用户。</p>
+                <hr>
+                <h6>权限范围：</h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>安全工具使用</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>靶场漏洞练习</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>查看自己扫描历史</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>修改个人信息</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>用户管理</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>系统配置</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-start border-secondary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-eye-fill text-secondary me-2"></i>访客</h5>
+                    <span class="badge bg-secondary">未登录</span>
+                </div>
+                <p class="text-muted">仅可访问登录和注册页面，无法使用任何平台功能。</p>
+                <hr>
+                <h6>权限范围：</h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>登录页面</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>注册页面</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>所有平台功能</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>安全工具</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>靶场练习</li>
+                    <li class="mb-1"><i class="bi bi-x-circle text-danger me-2"></i>系统管理</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 功能权限矩阵 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-table me-1"></i> 功能权限矩阵
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>功能模块</th>
+                    <th class="text-center">管理员</th>
+                    <th class="text-center">普通用户</th>
+                    <th class="text-center">访客</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><i class="bi bi-search me-2"></i>端口扫描</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-wifi me-2"></i>网络探测</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-shield-exclamation me-2"></i>WAF 检测</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-fingerprint me-2"></i>服务指纹识别</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-folder2-open me-2"></i>Web 目录扫描</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-globe me-2"></i>子域名枚举</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-bug me-2"></i>靶场漏洞练习</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-clock-history me-2"></i>扫描历史</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr class="table-light">
+                    <td><strong>管理功能</strong></td>
+                    <td></td><td></td><td></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-people me-2"></i>用户管理</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-shield-lock me-2"></i>角色权限管理</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-journal-text me-2"></i>日志审计</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-card-checklist me-2"></i>题目管理</td>
+                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                    <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 安全策略 -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-shield-fill-exclamation me-1"></i> 当前安全策略
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>密码策略：</strong></td><td>最少 8 位字符</td></tr>
+                        <tr><td><strong>登录保护：</strong></td><td>5 次失败后锁定 IP 10 分钟</td></tr>
+                        <tr><td><strong>验证码：</strong></td><td>登录时必须输入验证码</td></tr>
+                        <tr><td><strong>会话超时：</strong></td><td>8 小时自动过期</td></tr>
+                        <tr><td><strong>密码存储：</strong></td><td>Werkzeug 哈希加密</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 待完善功能
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>RBAC 多角色权限体系</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>权限细粒度控制（模块级别）</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>操作审批流程</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>密码复杂度策略</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>双因素认证 (2FA)</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>登录设备管理</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

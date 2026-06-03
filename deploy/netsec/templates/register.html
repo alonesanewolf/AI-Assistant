@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册账户</title>
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --line: #d9e2ef;
+            --text-1: #0f172a;
+            --text-2: #64748b;
+            --primary: #0f4c81;
+            --error: #dc2626;
+            --success: #059669;
+            --card: #ffffff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text-1);
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .panel {
+            width: min(520px, 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: var(--card);
+            box-shadow: 0 20px 48px rgba(15, 23, 42, .10);
+            padding: 28px;
+        }
+        h2 { margin: 0 0 8px; }
+        .sub { margin: 0 0 18px; color: var(--text-2); font-size: 14px; }
+        .field { margin-bottom: 12px; }
+        .field label { display: block; margin-bottom: 6px; font-size: 13px; color: #334155; }
+        .input-wrap {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+        .input-wrap input {
+            width: 100%;
+            border: 0;
+            outline: 0;
+            padding: 11px 12px;
+            background: transparent;
+            font-size: 14px;
+        }
+        .alert {
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            border: 1px solid transparent;
+        }
+        .alert.error { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+        .alert.success { color: #065f46; border-color: #a7f3d0; background: #ecfdf5; }
+        .submit {
+            width: 100%;
+            border: 0;
+            border-radius: 10px;
+            padding: 11px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            background: linear-gradient(90deg, var(--primary), #1f6aa1);
+        }
+        .foot {
+            margin-top: 14px;
+            font-size: 13px;
+            color: var(--text-2);
+            text-align: center;
+        }
+        .foot a { color: var(--primary); text-decoration: none; }
+        .foot a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="panel">
+    <h2>创建账户</h2>
+    <p class="sub">注册后可直接登录企业安全平台</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('register') }}">
+        <div class="field">
+            <label for="username">用户名</label>
+            <div class="input-wrap">
+                <input id="username" name="username" type="text" maxlength="64" required>
+            </div>
+        </div>
+        <div class="field">
+            <label for="display_name">显示名称</label>
+            <div class="input-wrap">
+                <input id="display_name" name="display_name" type="text" maxlength="64">
+            </div>
+        </div>
+        <div class="field">
+            <label for="password">密码</label>
+            <div class="input-wrap">
+                <input id="password" name="password" type="password" maxlength="128" required>
+            </div>
+        </div>
+        <div class="field">
+            <label for="confirm_password">确认密码</label>
+            <div class="input-wrap">
+                <input id="confirm_password" name="confirm_password" type="password" maxlength="128" required>
+            </div>
+        </div>
+        <button class="submit" type="submit">立即注册</button>
+    </form>
+
+    <div class="foot">已有账户？<a href="{{ url_for('login') }}">返回登录</a></div>
+</div>
+</body>
+</html>

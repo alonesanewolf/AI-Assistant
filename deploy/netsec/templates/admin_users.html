@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-people-fill text-primary me-2"></i>用户管理</h2>
+        <p class="text-muted mb-0">管理系统中的所有注册用户</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="bi bi-plus-circle me-1"></i>新增用户
+        </button>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>返回首页
+        </a>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ stats.total }}</h3>
+                <small>用户总数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-check fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ stats.active }}</h3>
+                <small>活跃用户</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-x fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ stats.disabled }}</h3>
+                <small>已禁用</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-plus fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ stats.today }}</h3>
+                <small>今日新增</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-1"></i>用户列表</span>
+        <form method="get" class="d-flex gap-2" style="width:320px;">
+            <input type="text" name="search" class="form-control form-control-sm" 
+                   placeholder="搜索用户名/显示名..." value="{{ search }}">
+            <button type="submit" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-search"></i>
+            </button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>显示名</th>
+                    <th>状态</th>
+                    <th>注册时间</th>
+                    <th>最后更新</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.display_name }}</td>
+                    <td>
+                        {% if user.is_active %}
+                        <span class="badge bg-success">活跃</span>
+                        {% else %}
+                        <span class="badge bg-secondary">禁用</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                    <td>{{ user.updated_at.strftime('%Y-%m-%d %H:%M') if user.updated_at else '-' }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    data-bs-toggle="modal" data-bs-target="#editUserModal"
+                                    onclick="fillEditForm({{ user.id }}, '{{ user.username }}', '{{ user.display_name }}', {{ user.is_active }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% if user.is_active %}
+                            <form method="post" action="{{ url_for('admin_user_toggle') }}" style="display:inline;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="is_active" value="0">
+                                <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('确定要禁用该用户吗？')">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{{ url_for('admin_user_toggle') }}" style="display:inline;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="is_active" value="1">
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-unlock"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('admin_user_reset_password') }}" style="display:inline;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-info" onclick="return confirm('确定要重置该用户密码为默认密码吗？')">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                            </form>
+                            {% if user.username != 'admin' %}
+                            <form method="post" action="{{ url_for('admin_user_delete') }}" style="display:inline;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除该用户吗？此操作不可恢复！')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not users %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">暂无用户数据</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新增用户弹窗 -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('admin_user_add') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>新增用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" name="username" class="form-control" required minlength="3" maxlength="64" placeholder="3~64位字符">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">显示名</label>
+                        <input type="text" name="display_name" class="form-control" maxlength="64" placeholder="留空则同用户名">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control" required minlength="8" placeholder="至少8位">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建用户</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户弹窗 -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('admin_user_edit') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>编辑用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" id="edit_user_id">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" id="edit_username" class="form-control" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">显示名</label>
+                        <input type="text" name="display_name" id="edit_display_name" class="form-control" maxlength="64">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillEditForm(id, username, displayName, isActive) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_display_name').value = displayName;
+}
+</script>
+
+{% endblock %}

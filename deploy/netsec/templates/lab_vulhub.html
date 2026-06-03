@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Vulhub - 靶场概览{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-box-seam-fill text-warning me-2"></i>Vulhub</h2>
+        <p class="text-muted mb-0">基于 Docker 的漏洞靶场集合</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-warning d-flex align-items-start border-0 shadow-sm">
+    <i class="bi bi-lightbulb-fill text-warning fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于 Vulhub：</strong>
+        Vulhub 是一个面向大众的开源漏洞靶场集合，基于 Docker 和 Docker-compose，
+        无需安全知识，只需执行两条命令即可编译、运行一个完整的漏洞靶场环境。
+        本平台提供 Vulhub 环境管理和漏洞复现入口。
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-box-seam fs-2 mb-2"></i>
+                <h3 class="mb-0">170+</h3>
+                <small>漏洞环境</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-docker fs-2 mb-2"></i>
+                <h3 class="mb-0">Docker</h3>
+                <small>容器化部署</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-speedometer2 fs-2 mb-2"></i>
+                <h3 class="mb-0">2 步</h3>
+                <small>即可启动</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-github fs-2 mb-2"></i>
+                <h3 class="mb-0">开源</h3>
+                <small>社区维护</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 环境信息 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-server me-1"></i> 环境信息
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>项目地址：</strong></td><td>github.com/vulhub/vulhub</td></tr>
+                        <tr><td><strong>运行方式：</strong></td><td>Docker Compose</td></tr>
+                        <tr><td><strong>漏洞分类：</strong></td><td>Web / 中间件 / CMS / 框架</td></tr>
+                        <tr><td><strong>难度范围：</strong></td><td>入门 → 进阶</td></tr>
+                        <tr><td><strong>前置要求：</strong></td><td>Docker + Docker Compose</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速开始 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-rocket-takeoff me-1"></i> 快速开始
+            </div>
+            <div class="card-body">
+                <p>启动一个漏洞环境只需两步：</p>
+                <div class="bg-dark text-light p-3 rounded mb-3">
+                    <code class="text-warning"># 1. 进入目标漏洞目录</code><br>
+                    <code>cd vulhub/xxx/CVE-20xx-xxxx</code><br><br>
+                    <code class="text-warning"># 2. 启动环境</code><br>
+                    <code>docker-compose up -d</code>
+                </div>
+                <p>访问对应端口即可开始漏洞复现练习。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 常见漏洞分类 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-diagram-3 me-1"></i> 漏洞分类
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-globe fs-4 text-primary"></i>
+                            <div class="fw-bold mt-1">Web 应用</div>
+                            <small class="text-muted">Struts2 / Shiro 等</small>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-hdd-network fs-4 text-danger"></i>
+                            <div class="fw-bold mt-1">中间件</div>
+                            <small class="text-muted">Tomcat / WebLogic</small>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-file-earmark-code fs-4 text-success"></i>
+                            <div class="fw-bold mt-1">CMS 系统</div>
+                            <small class="text-muted">WordPress / Joomla</small>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-gear fs-4 text-warning"></i>
+                            <div class="fw-bold mt-1">框架</div>
+                            <small class="text-muted">Fastjson / Log4j</small>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-database fs-4 text-info"></i>
+                            <div class="fw-bold mt-1">数据库</div>
+                            <small class="text-muted">Redis / MySQL</small>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <i class="bi bi-cloud fs-4 text-secondary"></i>
+                            <div class="fw-bold mt-1">云原生</div>
+                            <small class="text-muted">K8s / Docker</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全提示 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 安全提示
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>仅在本地或隔离网络环境中运行</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>使用完毕后及时关闭容器（docker-compose down）</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>不要将漏洞环境暴露到公网</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>禁止利用漏洞环境攻击他人系统</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>复现漏洞仅用于安全研究和学习</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

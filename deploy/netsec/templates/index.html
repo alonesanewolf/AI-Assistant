@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全靶场后台</title>
+    <style>
+        :root {
+            --bg: #f1f5f9;
+            --panel: #0f172a;
+            --panel-2: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --card: #ffffff;
+            --line: #e2e8f0;
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #7c3aed;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: #0f172a;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            color: var(--text);
+            padding: 18px 14px;
+            border-right: 1px solid #0b1222;
+        }
+
+        .brand {
+            padding: 8px 10px 16px;
+            border-bottom: 1px solid rgba(148, 163, 184, .2);
+            margin-bottom: 14px;
+        }
+
+        .brand h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .brand small {
+            display: block;
+            margin-top: 6px;
+            color: var(--text-muted);
+        }
+
+        .tree {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        .tree details {
+            margin: 4px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(15, 23, 42, .2);
+        }
+
+        .tree summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 10px 12px;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .tree summary::-webkit-details-marker { display: none; }
+
+        .tree ul {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 8px;
+        }
+
+        .tree button {
+            width: calc(100% - 16px);
+            margin: 2px 8px;
+            text-align: left;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text);
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .tree button:hover,
+        .tree button.active {
+            background: rgba(37, 99, 235, .25);
+            color: #dbeafe;
+        }
+
+        .main {
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            padding: 16px;
+            gap: 14px;
+        }
+
+        .topbar,
+        .menubar,
+        .content {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+        }
+
+        .topbar .meta p {
+            margin: 4px 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .logout button {
+            border: 0;
+            background: var(--danger);
+            color: #fff;
+            padding: 9px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .logout button:hover {
+            opacity: .9;
+        }
+
+        .menubar {
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .menu-btn {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #1e293b;
+            border-radius: 20px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .menu-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .content {
+            padding: 18px;
+        }
+
+        .content h3 {
+            margin: 0 0 10px;
+        }
+
+        .content p {
+            margin: 6px 0;
+            color: #475569;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .function-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, .04);
+        }
+
+        .function-card h4 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
+
+        .function-card p {
+            font-size: 13px;
+            color: #64748b;
+            min-height: 40px;
+        }
+
+        .function-card ul {
+            margin: 8px 0 14px;
+            padding-left: 18px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); }
+        .btn-danger { background: var(--danger); }
+        .btn-purple { background: var(--purple); }
+        .btn-gray { background: #64748b; }
+
+        .btn:hover {
+            opacity: .9;
+        }
+
+        .notice {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            font-size: 13px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .stat-card strong {
+            display: block;
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .stat-card span {
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                min-height: auto;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="layout">
+
+    <!-- 左侧菜单 -->
+    <aside class="sidebar">
+        <div class="brand">
+            <h2>安全靶场后台</h2>
+            <small>管理员：{{ display_name }}</small>
+        </div>
+
+        <ul class="tree">
+
+            <li>
+                <details open>
+                    <summary>靶场分类</summary>
+                    <ul>
+                        <li><button class="tree-link" data-url="{{ url_for('dvwa_overview') }}">DVWA</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_vulhub') }}">Vulhub</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_metasploitable2') }}">Metasploitable2</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_webgoat') }}">WebGoat</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_juiceshop') }}">OWASP Juice Shop</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_htb') }}">Hack The Box</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('lab_tryhackme') }}">TryHackMe</button></li>
+                    </ul>
+                </details>
+            </li>
+
+            <!-- 新增：安全功能菜单 -->
+            <li>
+                <details open>
+                    <summary>安全功能</summary>
+                    <ul>
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('range_page') }}">
+                                安全实验中心
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('port_scan_page') }}">
+                                端口扫描
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('scan_history') }}">
+                                扫描历史
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('network_scan_page') }}">
+                                网络探测
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('waf_detect_page') }}">
+                                WAF检测
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('fingerprint_page') }}">
+                                服务指纹识别
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('web_dir_scan_page') }}">
+                                Web目录扫描
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('subdomain_enum_page') }}">
+                                子域名枚举
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('report_manage') }}">
+                                报告管理
+                            </button>
+                        </li>
+                    </ul>
+                </details>
+            </li>
+
+            <li>
+                <details>
+                    <summary>系统管理</summary>
+                    <ul>
+                        <li><button class="tree-link" data-url="{{ url_for('admin_users') }}">用户管理</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('admin_roles') }}">角色权限</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('admin_logs') }}">日志审计</button></li>
+                    </ul>
+                </details>
+            </li>
+
+        </ul>
+    </aside>
+
+    <!-- 右侧主体 -->
+    <main class="main">
+
+        <!-- 顶部用户信息 -->
+        <section class="topbar">
+            <div class="meta">
+                <p><strong>欢迎回来，{{ display_name }}</strong></p>
+                <p>登录时间：{{ login_time }}</p>
+            </div>
+
+            <form class="logout" action="{{ url_for('logout') }}" method="post">
+                <button type="submit">退出登录</button>
+            </form>
+        </section>
+
+        <!-- 顶部横向菜单 -->
+        <nav class="menubar" id="top-menu">
+            <button class="menu-btn active" data-panel="overview">平台概览</button>
+            <button class="menu-btn" data-panel="tools">安全工具</button>
+            <button class="menu-btn" data-panel="range">靶场实验</button>
+            <button class="menu-btn" data-panel="history">扫描记录</button>
+            <button class="menu-btn" data-panel="about">系统说明</button>
+        </nav>
+
+        <!-- 内容区域 -->
+        <section class="content" id="content-panel">
+
+            <h3>平台概览</h3>
+            <p>这是网络安全助手后台首页，你可以在这里进入安全实验、端口扫描、扫描历史、报告管理等功能。</p>
+
+            <div class="notice">
+                <strong>安全提示：</strong>
+                本平台仅用于本机、虚拟机、课程靶场或明确授权环境中的安全测试，请勿扫描未授权目标。
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <strong>14</strong>
+                    <span>已集成功能</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>7</strong>
+                    <span>安全扫描模块</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>14</strong>
+                    <span>漏洞练习题</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>7</strong>
+                    <span>靶场分类</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+
+                <div class="function-card">
+                    <h4>安全实验中心</h4>
+                    <p>进入统一实验中心，查看端口扫描、WAF 检测、指纹识别等模块。</p>
+                    <ul>
+                        <li>功能模块导航</li>
+                        <li>实验说明展示</li>
+                        <li>靶场漏洞练习</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" href="{{ url_for('range_page') }}">
+                            进入实验中心
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>DVWA 漏洞练习</h4>
+                    <p>14 道漏洞练习题，覆盖 SQL 注入、XSS、CSRF、文件上传等攻击类型。</p>
+                    <ul>
+                        <li>5 大分类（认证/注入/XSS/文件/客户端）</li>
+                        <li>通关进度追踪</li>
+                        <li>环境信息查看</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="{{ url_for('dvwa_overview') }}">
+                            进入练习
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>端口扫描</h4>
+                    <p>对授权目标进行 TCP 端口扫描，识别开放端口并保存结果。</p>
+                    <ul>
+                        <li>支持自定义端口范围</li>
+                        <li>多线程并发扫描</li>
+                        <li>结果写入数据库</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="{{ url_for('port_scan_page') }}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>扫描历史</h4>
+                    <p>查看当前用户历史扫描任务和对应扫描结果，支持一键生成报告。</p>
+                    <ul>
+                        <li>任务列表与详情</li>
+                        <li>端口结果查看</li>
+                        <li>一键生成扫描报告</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-gray" href="{{ url_for('scan_history') }}">
+                            查看历史
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>网络探测</h4>
+                    <p>对目标网段进行主机存活发现，识别在线主机。</p>
+                    <ul>
+                        <li>主机存活探测</li>
+                        <li>网络连通性检测</li>
+                        <li>多线程并发扫描</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#0ea5e9;" href="{{ url_for('network_scan_page') }}">
+                            进入探测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>WAF 检测</h4>
+                    <p>对 Web 目标发送攻击特征请求，检测是否存在 WAF 防护。</p>
+                    <ul>
+                        <li>请求特征检测</li>
+                        <li>响应头分析</li>
+                        <li>识别 WAF 类型</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-purple" href="{{ url_for('waf_detect_page') }}">
+                            开始检测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>服务指纹识别</h4>
+                    <p>根据端口 Banner 或 HTTP 响应识别服务类型和版本。</p>
+                    <ul>
+                        <li>Banner 获取</li>
+                        <li>服务版本识别</li>
+                        <li>多端口批量识别</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="{{ url_for('fingerprint_page') }}">
+                            开始识别
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>Web 目录扫描</h4>
+                    <p>通过字典探测 Web 站点的敏感目录和文件。</p>
+                    <ul>
+                        <li>目录字典扫描</li>
+                        <li>HTTP 状态码识别</li>
+                        <li>敏感路径发现</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-warning" href="{{ url_for('web_dir_scan_page') }}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>子域名枚举</h4>
+                    <p>通过字典对目标域名进行子域名爆破。</p>
+                    <ul>
+                        <li>子域名爆破</li>
+                        <li>DNS 解析验证</li>
+                        <li>多线程加速</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="{{ url_for('subdomain_enum_page') }}">
+                            开始枚举
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>报告管理</h4>
+                    <p>管理扫描报告，查看详情、导出下载、风险评估一目了然。</p>
+                    <ul>
+                        <li>报告列表与筛选</li>
+                        <li>风险等级评估</li>
+                        <li>报告导出下载</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#6366f1;" href="{{ url_for('report_manage') }}">
+                            管理报告
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>用户管理</h4>
+                    <p>管理平台用户账号，支持新增、编辑、禁用和密码重置。</p>
+                    <ul>
+                        <li>用户列表与搜索</li>
+                        <li>启用/禁用账号</li>
+                        <li>密码重置</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" style="background:#0d9488;" href="{{ url_for('admin_users') }}">
+                            管理用户
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>角色权限</h4>
+                    <p>查看系统角色与权限分配情况。</p>
+                    <ul>
+                        <li>管理员角色</li>
+                        <li>普通用户角色</li>
+                        <li>角色统计</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#64748b;" href="{{ url_for('admin_roles') }}">
+                            查看权限
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>日志审计</h4>
+                    <p>查看系统登录日志、扫描任务日志和通关记录。</p>
+                    <ul>
+                        <li>登录安全统计</li>
+                        <li>扫描任务记录</li>
+                        <li>通关进度日志</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-warning" style="background:#78716c;" href="{{ url_for('admin_logs') }}">
+                            查看日志
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>题目管理</h4>
+                    <p>管理漏洞练习题目，支持新增、编辑、启用/禁用和删除。</p>
+                    <ul>
+                        <li>题目列表与分类</li>
+                        <li>新增/编辑题目</li>
+                        <li>启用/禁用控制</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#be185d;" href="{{ url_for('admin_challenges') }}">
+                            管理题目
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    const topMenu = document.getElementById('top-menu');
+    const contentPanel = document.getElementById('content-panel');
+    const treeLinks = document.querySelectorAll('.tree-link');
+
+    const urls = {
+        range: "{{ url_for('range_page') }}",
+        portScan: "{{ url_for('port_scan_page') }}",
+        history: "{{ url_for('scan_history') }}",
+        networkScan: "{{ url_for('network_scan_page') }}",
+        wafDetect: "{{ url_for('waf_detect_page') }}",
+        fingerprint: "{{ url_for('fingerprint_page') }}",
+        webDirScan: "{{ url_for('web_dir_scan_page') }}",
+        subdomainEnum: "{{ url_for('subdomain_enum_page') }}",
+        reportManage: "{{ url_for('report_manage') }}",
+        dvwaOverview: "{{ url_for('dvwa_overview') }}",
+        adminUsers: "{{ url_for('admin_users') }}",
+        adminRoles: "{{ url_for('admin_roles') }}",
+        adminLogs: "{{ url_for('admin_logs') }}",
+        adminChallenges: "{{ url_for('admin_challenges') }}"
+    };
+
+    function showOverview() {
+        contentPanel.innerHTML = `
+            <h3>平台概览</h3>
+            <p>这是网络安全助手后台首页，集成了安全扫描、漏洞练习、报告管理和系统管理等功能。</p>
+
+            <div class="notice">
+                <strong>安全提示：</strong>
+                本平台仅用于本机、虚拟机、课程靶场或明确授权环境中的安全测试，请勿扫描未授权目标。
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <strong>14</strong>
+                    <span>已集成功能</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>7</strong>
+                    <span>安全扫描模块</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>14</strong>
+                    <span>漏洞练习题</span>
+                </div>
+
+                <div class="stat-card">
+                    <strong>7</strong>
+                    <span>靶场分类</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+
+                <div class="function-card">
+                    <h4>安全实验中心</h4>
+                    <p>进入统一实验中心，查看端口扫描、WAF 检测、指纹识别等模块。</p>
+                    <ul>
+                        <li>功能模块导航</li>
+                        <li>实验说明展示</li>
+                        <li>靶场漏洞练习</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" href="${urls.range}">
+                            进入实验中心
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>DVWA 漏洞练习</h4>
+                    <p>14 道漏洞练习题，覆盖 SQL 注入、XSS、CSRF、文件上传等攻击类型。</p>
+                    <ul>
+                        <li>5 大分类（认证/注入/XSS/文件/客户端）</li>
+                        <li>通关进度追踪</li>
+                        <li>环境信息查看</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="${urls.dvwaOverview}">
+                            进入练习
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>端口扫描</h4>
+                    <p>对授权目标进行 TCP 端口扫描，识别开放端口并保存结果。</p>
+                    <ul>
+                        <li>支持自定义端口范围</li>
+                        <li>多线程并发扫描</li>
+                        <li>结果写入数据库</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.portScan}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>扫描历史</h4>
+                    <p>查看当前用户历史扫描任务和对应扫描结果，支持一键生成报告。</p>
+                    <ul>
+                        <li>任务列表与详情</li>
+                        <li>端口结果查看</li>
+                        <li>一键生成扫描报告</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-gray" href="${urls.history}">
+                            查看历史
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>网络探测</h4>
+                    <p>对目标网段进行主机存活发现，识别在线主机。</p>
+                    <ul>
+                        <li>主机存活探测</li>
+                        <li>网络连通性检测</li>
+                        <li>多线程并发扫描</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#0ea5e9;" href="${urls.networkScan}">
+                            进入探测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>WAF 检测</h4>
+                    <p>对 Web 目标发送攻击特征请求，检测是否存在 WAF 防护。</p>
+                    <ul>
+                        <li>请求特征检测</li>
+                        <li>响应头分析</li>
+                        <li>识别 WAF 类型</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-purple" href="${urls.wafDetect}">
+                            开始检测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>服务指纹识别</h4>
+                    <p>根据端口 Banner 或 HTTP 响应识别服务类型和版本。</p>
+                    <ul>
+                        <li>Banner 获取</li>
+                        <li>服务版本识别</li>
+                        <li>多端口批量识别</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="${urls.fingerprint}">
+                            开始识别
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>Web 目录扫描</h4>
+                    <p>通过字典探测 Web 站点的敏感目录和文件。</p>
+                    <ul>
+                        <li>目录字典扫描</li>
+                        <li>HTTP 状态码识别</li>
+                        <li>敏感路径发现</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-warning" href="${urls.webDirScan}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>子域名枚举</h4>
+                    <p>通过字典对目标域名进行子域名爆破。</p>
+                    <ul>
+                        <li>子域名爆破</li>
+                        <li>DNS 解析验证</li>
+                        <li>多线程加速</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.subdomainEnum}">
+                            开始枚举
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>报告管理</h4>
+                    <p>管理扫描报告，查看详情、导出下载、风险评估一目了然。</p>
+                    <ul>
+                        <li>报告列表与筛选</li>
+                        <li>风险等级评估</li>
+                        <li>报告导出下载</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#6366f1;" href="${urls.reportManage}">
+                            管理报告
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>用户管理</h4>
+                    <p>管理平台用户账号，支持新增、编辑、禁用和密码重置。</p>
+                    <ul>
+                        <li>用户列表与搜索</li>
+                        <li>启用/禁用账号</li>
+                        <li>密码重置</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" style="background:#0d9488;" href="${urls.adminUsers}">
+                            管理用户
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>角色权限</h4>
+                    <p>查看系统角色与权限分配情况。</p>
+                    <ul>
+                        <li>管理员角色</li>
+                        <li>普通用户角色</li>
+                        <li>角色统计</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#64748b;" href="${urls.adminRoles}">
+                            查看权限
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>日志审计</h4>
+                    <p>查看系统登录日志、扫描任务日志和通关记录。</p>
+                    <ul>
+                        <li>登录安全统计</li>
+                        <li>扫描任务记录</li>
+                        <li>通关进度日志</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-warning" style="background:#78716c;" href="${urls.adminLogs}">
+                            查看日志
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>题目管理</h4>
+                    <p>管理漏洞练习题目，支持新增、编辑、启用/禁用和删除。</p>
+                    <ul>
+                        <li>题目列表与分类</li>
+                        <li>新增/编辑题目</li>
+                        <li>启用/禁用控制</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#be185d;" href="${urls.adminChallenges}">
+                            管理题目
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }
+
+    function showTools() {
+        contentPanel.innerHTML = `
+            <h3>安全工具</h3>
+            <p>集成端口扫描、网络探测、WAF 检测、指纹识别、目录扫描、子域名枚举等安全扫描模块。</p>
+
+            <div class="dashboard-grid">
+
+                <div class="function-card">
+                    <h4>端口扫描</h4>
+                    <p>对授权目标进行 TCP 端口扫描，识别开放端口并保存结果。</p>
+                    <ul>
+                        <li>支持自定义端口范围</li>
+                        <li>多线程并发扫描</li>
+                        <li>结果写入数据库</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.portScan}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>网络探测</h4>
+                    <p>对目标网段进行主机存活发现，识别在线主机。</p>
+                    <ul>
+                        <li>主机存活探测</li>
+                        <li>网络连通性检测</li>
+                        <li>多线程并发扫描</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#0ea5e9;" href="${urls.networkScan}">
+                            进入探测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>WAF 检测</h4>
+                    <p>对 Web 目标发送攻击特征请求，检测是否存在 WAF 防护。</p>
+                    <ul>
+                        <li>请求特征检测</li>
+                        <li>响应头分析</li>
+                        <li>识别 WAF 类型</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-purple" href="${urls.wafDetect}">
+                            开始检测
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>服务指纹识别</h4>
+                    <p>根据端口 Banner 或 HTTP 响应识别服务类型和版本。</p>
+                    <ul>
+                        <li>Banner 获取</li>
+                        <li>服务版本识别</li>
+                        <li>多端口批量识别</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="${urls.fingerprint}">
+                            开始识别
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>Web 目录扫描</h4>
+                    <p>通过字典探测 Web 站点的敏感目录和文件。</p>
+                    <ul>
+                        <li>目录字典扫描</li>
+                        <li>HTTP 状态码识别</li>
+                        <li>敏感路径发现</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-warning" href="${urls.webDirScan}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>子域名枚举</h4>
+                    <p>通过字典对目标域名进行子域名爆破。</p>
+                    <ul>
+                        <li>子域名爆破</li>
+                        <li>DNS 解析验证</li>
+                        <li>多线程加速</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.subdomainEnum}">
+                            开始枚举
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>扫描历史</h4>
+                    <p>查看历史扫描任务和对应扫描结果，支持一键生成报告。</p>
+                    <ul>
+                        <li>任务列表与详情</li>
+                        <li>端口结果查看</li>
+                        <li>一键生成扫描报告</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-gray" href="${urls.history}">
+                            查看历史
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>报告管理</h4>
+                    <p>管理扫描报告，查看详情、导出下载、风险评估一目了然。</p>
+                    <ul>
+                        <li>报告列表与筛选</li>
+                        <li>风险等级评估</li>
+                        <li>报告导出下载</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#6366f1;" href="${urls.reportManage}">
+                            管理报告
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }
+
+    function showRange() {
+        contentPanel.innerHTML = `
+            <h3>靶场实验</h3>
+            <p>安全实验入口，包含 DVWA 漏洞练习、安全实验中心和多类靶场分类。</p>
+
+            <div class="dashboard-grid">
+
+                <div class="function-card">
+                    <h4>DVWA 漏洞练习</h4>
+                    <p>14 道漏洞练习题，覆盖认证、注入、XSS、文件、客户端 5 大分类。</p>
+                    <ul>
+                        <li>漏洞练习与通关检测</li>
+                        <li>通关进度追踪</li>
+                        <li>环境信息查看</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-danger" href="${urls.dvwaOverview}">
+                            进入练习
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>安全实验中心</h4>
+                    <p>进入统一实验中心，查看端口扫描、WAF 检测、指纹识别等模块。</p>
+                    <ul>
+                        <li>功能模块导航</li>
+                        <li>实验说明展示</li>
+                        <li>靶场漏洞练习</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" href="${urls.range}">
+                            进入实验中心
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>题目管理</h4>
+                    <p>管理漏洞练习题目，支持新增、编辑、启用/禁用和删除。</p>
+                    <ul>
+                        <li>题目列表与分类</li>
+                        <li>新增/编辑题目</li>
+                        <li>启用/禁用控制</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#be185d;" href="${urls.adminChallenges}">
+                            管理题目
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>端口扫描实验</h4>
+                    <p>对授权目标进行 TCP 端口扫描，识别开放端口并保存结果。</p>
+                    <ul>
+                        <li>支持自定义端口范围</li>
+                        <li>多线程并发扫描</li>
+                        <li>结果写入数据库</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.portScan}">
+                            开始实验
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>网络探测实验</h4>
+                    <p>对目标网段进行主机存活发现，识别在线主机。</p>
+                    <ul>
+                        <li>主机存活探测</li>
+                        <li>网络连通性检测</li>
+                        <li>多线程并发扫描</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#0ea5e9;" href="${urls.networkScan}">
+                            开始实验
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
+                    <h4>WAF 检测实验</h4>
+                    <p>对 Web 目标发送攻击特征请求，检测是否存在 WAF 防护。</p>
+                    <ul>
+                        <li>请求特征检测</li>
+                        <li>响应头分析</li>
+                        <li>识别 WAF 类型</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-purple" href="${urls.wafDetect}">
+                            开始实验
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }
+
+    function showHistory() {
+        contentPanel.innerHTML = `
+            <h3>扫描记录</h3>
+            <p>查看当前用户提交过的扫描任务和扫描结果，支持一键生成扫描报告。</p>
+
+            <div class="dashboard-grid">
+                <div class="function-card">
+                    <h4>扫描历史</h4>
+                    <p>进入扫描历史页面，查看每次扫描任务并生成报告。</p>
+                    <ul>
+                        <li>任务 ID 与类型</li>
+                        <li>扫描目标与结果</li>
+                        <li>一键生成扫描报告</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-gray" href="${urls.history}">
+                            查看扫描历史
+                        </a>
+                    </div>
+                </div>
+                <div class="function-card">
+                    <h4>报告管理</h4>
+                    <p>管理所有已生成的扫描报告，查看详情或导出下载。</p>
+                    <ul>
+                        <li>报告列表与筛选</li>
+                        <li>风险等级评估</li>
+                        <li>报告导出下载</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:#6366f1;" href="${urls.reportManage}">
+                            管理报告
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function showAbout() {
+        contentPanel.innerHTML = `
+            <h3>系统说明</h3>
+            <p>本项目是一个网络安全助手平台，集成了多种安全扫描工具、漏洞练习靶场和系统管理功能。</p>
+
+            <div class="notice">
+                <strong>项目结构：</strong>
+                前端页面负责可视化操作，Flask 后端负责调用扫描模块，MySQL 负责保存用户、任务、扫描结果和报告数据。
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="function-card">
+                    <h4>当前已实现</h4>
+                    <ul>
+                        <li>用户登录注册（含验证码与锁定机制）</li>
+                        <li>安全靶场后台首页</li>
+                        <li>端口扫描</li>
+                        <li>网络探测（主机发现）</li>
+                        <li>WAF 检测</li>
+                        <li>服务指纹识别</li>
+                        <li>Web 目录扫描</li>
+                        <li>子域名枚举</li>
+                        <li>DVWA 漏洞练习（14题/5分类）</li>
+                        <li>扫描历史（含一键生成报告）</li>
+                        <li>报告管理（生成/查看/导出/删除）</li>
+                        <li>用户管理（增删改查/禁用/重置密码）</li>
+                        <li>角色权限（管理员/普通用户）</li>
+                        <li>日志审计（登录/扫描/通关记录）</li>
+                        <li>题目管理（增删改查/启用禁用）</li>
+                        <li>7 类靶场分类导航</li>
+                    </ul>
+                </div>
+
+                <div class="function-card">
+                    <h4>后续待完善</h4>
+                    <ul>
+                        <li>更多扫描类型的结果持久化</li>
+                        <li>报告 PDF 导出</li>
+                        <li>定时扫描任务</li>
+                        <li>漏洞扫描器集成</li>
+                        <li>多语言支持</li>
+                        <li>API 接口鉴权</li>
+                    </ul>
+                </div>
+
+                <div class="function-card">
+                    <h4>技术栈</h4>
+                    <ul>
+                        <li>后端：Python Flask</li>
+                        <li>数据库：MySQL 8.x</li>
+                        <li>前端：HTML / CSS / JavaScript</li>
+                        <li>扫描引擎：NetSecAssistant / network_scan</li>
+                        <li>模板引擎：Jinja2</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    function showTodo(name) {
+        contentPanel.innerHTML = `
+            <h3>${name}</h3>
+            <p>该模块已集成，请通过左侧菜单或平台概览进入对应功能页面。</p>
+
+            <div class="notice">
+                如需扩展新功能，集成方式：新增页面 → 新增后端路由 → 调用对应 Python 函数 → 保存结果到数据库 → 页面展示结果。
+            </div>
+        `;
+    }
+
+    function setActiveTopButton(btn) {
+        topMenu.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // 顶部菜单点击
+    topMenu.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setActiveTopButton(btn);
+
+            const panel = btn.getAttribute('data-panel');
+
+            if (panel === 'overview') {
+                showOverview();
+            } else if (panel === 'tools') {
+                showTools();
+            } else if (panel === 'range') {
+                showRange();
+            } else if (panel === 'history') {
+                showHistory();
+            } else if (panel === 'about') {
+                showAbout();
+            }
+        });
+    });
+
+    // 左侧可跳转菜单
+    treeLinks.forEach(item => {
+        item.addEventListener('click', () => {
+            const url = item.getAttribute('data-url');
+            if (url) {
+                window.location.href = url;
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

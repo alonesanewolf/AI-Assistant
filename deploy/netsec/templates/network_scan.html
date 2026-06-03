@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}网络探测{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="bi bi-diagram-3 me-2"></i>网络探测</h2>
+    <p class="text-muted mb-0">
+        对目标网段进行主机存活发现，识别在线主机。
+    </p>
+</div>
+
+<div class="alert alert-warning">
+    <strong>安全提示：</strong>
+    请只扫描本机、虚拟机、课程靶场或明确授权的网段。
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-gear me-1"></i> 探测参数
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('network_scan_page') }}">
+                    <div class="mb-3">
+                        <label class="form-label">目标网段</label>
+                        <input type="text" class="form-control" name="network"
+                               placeholder="例如：192.168.1.0/24" required>
+                        <div class="form-text">支持 CIDR 格式，如 192.168.1.0/24</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">超时时间（秒）</label>
+                        <input type="number" class="form-control" name="timeout"
+                               value="1" min="0.1" step="0.1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">线程数</label>
+                        <input type="number" class="form-control" name="workers"
+                               value="100" min="1" max="500">
+                        <div class="form-text">建议 50~200，网段越大需要越多线程</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" style="background:#0ea5e9;border-color:#0ea5e9;">
+                            <i class="bi bi-search me-1"></i>开始探测
+                        </button>
+                        <a href="{{ url_for('range_page') }}" class="btn btn-secondary">返回</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if results is not none %}
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-check-circle me-1"></i> 探测结果
+            </div>
+            <div class="card-body">
+                {% if results %}
+                <p>共发现 <strong>{{ results|length }}</strong> 台存活主机：</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>IP 地址</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for host in results %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><code>{{ host }}</code></td>
+                                <td><span class="badge bg-success">在线</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <a href="{{ url_for('port_scan_page') }}?target={{ results[0] if results else '' }}"
+                   class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-arrow-right me-1"></i>对存活主机进行端口扫描
+                </a>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i> 未发现存活主机。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3">
+            <strong>错误：</strong>{{ error }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

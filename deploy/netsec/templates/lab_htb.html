@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Hack The Box - 靶场概览{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-puzzle-fill text-danger me-2"></i>Hack The Box</h2>
+        <p class="text-muted mb-0">全球领先的网络安全训练和认证平台</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-danger d-flex align-items-start border-0 shadow-sm">
+    <i class="bi bi-lightbulb-fill text-warning fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于 Hack The Box：</strong>
+        Hack The Box (HTB) 是一个在线网络安全训练平台，提供虚拟靶机、挑战和职业路径。
+        用户通过攻破靶机获取 Flag 来积累积分和排名。HTB 覆盖 Web、逆向、渗透测试、
+        密码学等多个安全领域，是安全从业者提升实战能力的重要平台。
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-danger shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-pc-display fs-2 mb-2"></i>
+                <h3 class="mb-0">400+</h3>
+                <small>靶机数量</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-2 mb-2"></i>
+                <h3 class="mb-0">100万+</h3>
+                <small>注册用户</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-award fs-2 mb-2"></i>
+                <h3 class="mb-0">排名制</h3>
+                <small>全球排行</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-mortarboard fs-2 mb-2"></i>
+                <h3 class="mb-0">认证</h3>
+                <small>HTB CPTS / CHHB</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 靶机分类 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-pc-display me-1"></i> 靶机分类
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>类型</th><th>说明</th><th>难度</th></tr></thead>
+                    <tbody>
+                        <tr><td>Linux 靶机</td><td>基于 Linux 的渗透靶机</td><td><span class="badge bg-success">入门</span> ~ <span class="badge bg-danger">Insane</span></td></tr>
+                        <tr><td>Windows 靶机</td><td>基于 Windows 的渗透靶机</td><td><span class="badge bg-success">入门</span> ~ <span class="badge bg-danger">Insane</span></td></tr>
+                        <tr><td>Web 挑战</td><td>Web 安全专项挑战</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>逆向工程</td><td>二进制逆向分析</td><td><span class="badge bg-danger">高级</span></td></tr>
+                        <tr><td>密码学</td><td>加密解密挑战</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>取证分析</td><td>数字取证与应急响应</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>移动安全</td><td>Android / iOS 安全</td><td><span class="badge bg-danger">高级</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 攻击流程 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-diagram-2 me-1"></i> 典型攻击流程
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-1-circle-fill text-success me-2"></i>获取 VPN 连接</h6>
+                    <p class="ms-4 text-muted">下载 OpenVPN 配置文件，连接到 HTB 实验网络。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-2-circle-fill text-info me-2"></i>信息收集</h6>
+                    <p class="ms-4 text-muted">Nmap 扫描、Web 指纹识别、目录枚举。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-3-circle-fill text-warning me-2"></i>漏洞利用</h6>
+                    <p class="ms-4 text-muted">发现并利用漏洞获取初始访问权限（User Flag）。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-4-circle-fill text-danger me-2"></i>权限提升</h6>
+                    <p class="ms-4 text-muted">提权到 root/SYSTEM，获取 Root Flag。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 环境信息 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-server me-1"></i> 平台信息
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>平台地址：</strong></td><td>app.hackthebox.com</td></tr>
+                        <tr><td><strong>连接方式：</strong></td><td>OpenVPN / Pwnbox</td></tr>
+                        <tr><td><strong>免费内容：</strong></td><td>有限数量的活跃靶机</td></tr>
+                        <tr><td><strong>付费版：</strong></td><td>VIP / VIP+ 解锁更多靶机</td></tr>
+                        <tr><td><strong>适用人群：</strong></td><td>入门 → 专业安全从业者</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全提示 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 安全提示
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>仅攻击 HTB 平台授权的靶机</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>不要在 VPN 连接期间扫描非靶机 IP</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>遵守平台规则，禁止分享活跃靶机 Writeup</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>禁止将技术用于攻击真实系统</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>遵守当地法律法规</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

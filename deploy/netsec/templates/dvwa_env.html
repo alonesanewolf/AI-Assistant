@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}DVWA - 环境信息{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h2 class="mb-1"><i class="bi bi-hdd-stack-fill text-primary me-2"></i>DVWA 环境信息</h2>
+    <p class="text-muted mb-0">查看靶场环境配置和系统信息</p>
+</div>
+
+<div class="row g-4">
+    <!-- 服务器配置 -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-hdd-network me-1"></i> 服务器配置
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover mb-0">
+                    <tbody>
+                        <tr><td><strong>服务器类型</strong></td><td>{{ server_info }}</td></tr>
+                        <tr><td><strong>服务器时间</strong></td><td>{{ server_time }}</td></tr>
+                        <tr><td><strong>服务器时区</strong></td><td>Asia/Shanghai (CST)</td></tr>
+                        <tr><td><strong>服务器端口</strong></td><td>5000</td></tr>
+                        <tr><td><strong>操作系统</strong></td><td>{{ os_info }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Python 环境 -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-code-slash me-1"></i> Python 环境
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover mb-0">
+                    <tbody>
+                        <tr><td><strong>Python 版本</strong></td><td>{{ python_version }}</td></tr>
+                        <tr><td><strong>Web 框架</strong></td><td>Flask {{ flask_version }}</td></tr>
+                        <tr><td><strong>数据库驱动</strong></td><td>PyMySQL</td></tr>
+                        <tr><td><strong>模板引擎</strong></td><td>Jinja2</td></tr>
+                        <tr><td><strong>会话存储</strong></td><td>服务器端 Session (Cookie)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据库配置 -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-database me-1"></i> 数据库配置
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover mb-0">
+                    <tbody>
+                        <tr><td><strong>数据库类型</strong></td><td>MySQL</td></tr>
+                        <tr><td><strong>数据库版本</strong></td><td>{{ db_version }}</td></tr>
+                        <tr><td><strong>数据库名</strong></td><td>{{ db_name }}</td></tr>
+                        <tr><td><strong>字符集</strong></td><td>utf8mb4</td></tr>
+                        <tr><td><strong>数据表数量</strong></td><td>{{ table_count }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全配置 -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-shield-exclamation me-1"></i> 安全配置
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>安全等级</strong></td>
+                            <td><span class="badge badge-low">Low</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>CSRF 保护</strong></td>
+                            <td><span class="badge bg-danger">关闭</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>SQL 过滤</strong></td>
+                            <td><span class="badge bg-danger">关闭</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>XSS 过滤</strong></td>
+                            <td><span class="badge bg-danger">关闭</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>命令过滤</strong></td>
+                            <td><span class="badge bg-danger">关闭</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>文件上传限制</strong></td>
+                            <td><span class="badge bg-danger">无</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 目录结构 -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-folder2-open me-1"></i> 项目结构
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark text-light p-3 rounded mb-0"><code>netsec_platform/
+├── run.py                    # Flask 应用入口 (所有路由)
+├── NetSecAssistant.py        # 网络安全工具类
+├── network_scan.py           # 网络扫描模块
+├── portScan.py               # 端口扫描模块
+├── requirements.txt          # Python 依赖
+├── sql/
+│   └── mysql8_init.sql       # 数据库初始化脚本
+├── static/                   # 静态资源目录
+│   └── 1.jpg                 # 登录页背景图
+├── templates/                # HTML 模板目录
+│   ├── base.html             # 基础布局模板
+│   ├── login.html            # 登录页面
+│   ├── register.html         # 注册页面
+│   ├── index.html            # 后台首页
+│   ├── dvwa_overview.html    # DVWA 概览
+│   ├── dvwa_env.html         # 环境信息
+│   ├── dvwa_vulnerabilities.html  # 漏洞列表
+│   ├── progress.html         # 通关记录
+│   ├── admin_challenges.html # 题目管理
+│   └── vulnerabilities/      # 漏洞练习页面
+│       ├── brute_force.html
+│       ├── sqli_normal.html
+│       ├── sqli_blind.html
+│       ├── command_injection.html
+│       ├── xss_reflected.html
+│       ├── xss_stored.html
+│       ├── xss_dom.html
+│       ├── csrf.html
+│       ├── file_include.html
+│       ├── file_upload.html
+│       ├── weak_session.html
+│       ├── weak_captcha.html
+│       ├── csp_bypass.html
+│       └── javascript.html
+└── uploads/                   # 上传文件目录</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 漏洞说明 -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-book me-1"></i> 漏洞分类说明
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="vulnAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAuth">
+                                <i class="bi bi-key-fill text-primary me-2"></i> 认证类漏洞 (4个)
+                            </button>
+                        </h2>
+                        <div id="collapseAuth" class="accordion-collapse collapse show" data-bs-parent="#vulnAccordion">
+                            <div class="accordion-body">
+                                <p>认证类漏洞涉及身份验证、会话管理等安全机制的设计缺陷。</p>
+                                <ul>
+                                    <li><strong>暴力破解</strong> - 没有登录失败限制和验证码保护</li>
+                                    <li><strong>弱会话ID</strong> - 会话标识符可预测、可伪造</li>
+                                    <li><strong>不安全验证码</strong> - 验证码明文暴露，可被绕过</li>
+                                    <li><strong>CSRF</strong> - 跨站请求伪造，无Token保护</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInject">
+                                <i class="bi bi-syringe-fill text-success me-2"></i> 注入类漏洞 (3个)
+                            </button>
+                        </h2>
+                        <div id="collapseInject" class="accordion-collapse collapse" data-bs-parent="#vulnAccordion">
+                            <div class="accordion-body">
+                                <p>注入类漏洞允许攻击者将恶意代码注入到应用程序中执行。</p>
+                                <ul>
+                                    <li><strong>普通SQL注入</strong> - 用户输入直接拼接到SQL语句</li>
+                                    <li><strong>SQL盲注</strong> - 通过条件判断推断数据库信息</li>
+                                    <li><strong>命令注入</strong> - 用户输入拼接到系统命令中执行</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseXSS">
+                                <i class="bi bi-search text-warning me-2"></i> XSS类漏洞 (3个)
+                            </button>
+                        </h2>
+                        <div id="collapseXSS" class="accordion-collapse collapse" data-bs-parent="#vulnAccordion">
+                            <div class="accordion-body">
+                                <p>跨站脚本攻击允许攻击者在受害者浏览器中执行恶意JavaScript。</p>
+                                <ul>
+                                    <li><strong>反射型XSS</strong> - 恶意脚本通过URL参数反射</li>
+                                    <li><strong>存储型XSS</strong> - 恶意脚本被持久化存储</li>
+                                    <li><strong>DOM型XSS</strong> - 通过DOM操作注入代码</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFile">
+                                <i class="bi bi-file-earmark-text-fill text-info me-2"></i> 文件操作类漏洞 (2个)
+                            </button>
+                        </h2>
+                        <div id="collapseFile" class="accordion-collapse collapse" data-bs-parent="#vulnAccordion">
+                            <div class="accordion-body">
+                                <p>文件操作漏洞涉及对文件系统的不安全操作。</p>
+                                <ul>
+                                    <li><strong>文件包含</strong> - 未过滤用户输入被作为文件路径</li>
+                                    <li><strong>文件上传</strong> - 未验证上传文件类型和内容</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseClient">
+                                <i class="bi bi-window-stack text-secondary me-2"></i> 客户端类漏洞 (2个)
+                            </button>
+                        </h2>
+                        <div id="collapseClient" class="accordion-collapse collapse" data-bs-parent="#vulnAccordion">
+                            <div class="accordion-body">
+                                <p>客户端漏洞主要发生在浏览器端的安全缺陷。</p>
+                                <ul>
+                                    <li><strong>CSP绕过</strong> - 内容安全策略配置不当</li>
+                                    <li><strong>JavaScript漏洞</strong> - 前端代码存在安全缺陷</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

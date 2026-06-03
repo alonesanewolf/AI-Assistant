@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}DVWA - 漏洞练习{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-bug-fill text-danger me-2"></i>DVWA 漏洞练习</h2>
+        <p class="text-muted mb-0">选择以下漏洞进行练习和学习</p>
+    </div>
+    <div>
+        <span class="badge badge-low fs-6">Low 难度</span>
+    </div>
+</div>
+
+<div class="alert alert-warning d-flex align-items-center border-0 shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill fs-5 me-3"></i>
+    <div>
+        <strong>安全等级：Low</strong> — 当前所有漏洞均为最低难度，没有输入过滤和安全防护。建议先熟悉漏洞原理再进行挑战。
+    </div>
+</div>
+
+<!-- 认证类漏洞 -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-key-fill me-1"></i> 认证类漏洞
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for v in vulns %}
+            {% if v.category == '认证' %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-primary h-100 hover-shadow">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">
+                            {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
+                            {{ v.name }}
+                        </h6>
+                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-low">Low</span>
+                                {% if v.passed %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ v.url }}" class="btn btn-sm btn-primary">进入</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 注入类漏洞 -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-syringe-fill me-1"></i> 注入类漏洞
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for v in vulns %}
+            {% if v.category == '注入' %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-success h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-success">
+                            {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
+                            {{ v.name }}
+                        </h6>
+                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-low">Low</span>
+                                {% if v.passed %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ v.url }}" class="btn btn-sm btn-success">进入</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- XSS类漏洞 -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-warning text-dark">
+        <i class="bi bi-search me-1"></i> XSS类漏洞
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for v in vulns %}
+            {% if v.category == 'XSS' %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-warning h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-warning">
+                            {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
+                            {{ v.name }}
+                        </h6>
+                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-low">Low</span>
+                                {% if v.passed %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ v.url }}" class="btn btn-sm btn-warning">进入</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 文件操作类漏洞 -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-info text-white">
+        <i class="bi bi-file-earmark-text-fill me-1"></i> 文件操作类漏洞
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for v in vulns %}
+            {% if v.category == '文件' %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-info h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-info">
+                            {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
+                            {{ v.name }}
+                        </h6>
+                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-low">Low</span>
+                                {% if v.passed %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ v.url }}" class="btn btn-sm btn-info">进入</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 客户端类漏洞 -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-secondary text-white">
+        <i class="bi bi-window-stack me-1"></i> 客户端类漏洞
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for v in vulns %}
+            {% if v.category == '客户端' %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-secondary h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-secondary">
+                            {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
+                            {{ v.name }}
+                        </h6>
+                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-low">Low</span>
+                                {% if v.passed %}
+                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
+                                {% endif %}
+                            </div>
+                            <a href="{{ v.url }}" class="btn btn-sm btn-secondary">进入</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

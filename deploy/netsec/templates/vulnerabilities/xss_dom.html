@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - DOM型XSS{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-code-square text-warning me-2"></i>DOM型XSS</h2>
+        <p class="text-muted mb-0">DOM-based XSS - 通过DOM操作注入恶意代码</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">选择语言</label>
+                    <select id="language" class="form-select" onchange="updateContent()">
+                        <option value="">-- 选择语言 --</option>
+                        <option value="english">English</option>
+                        <option value="chinese">中文</option>
+                        <option value="japanese">日本語</option>
+                        <option value="korean">한국어</option>
+                        <option value="custom">自定义...</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">自定义文本</label>
+                    <div class="input-group">
+                        <input type="text" id="customText" class="form-control" placeholder="输入自定义文本 (尝试XSS)">
+                        <button class="btn btn-warning" onclick="updateContent(); checkVulnPass('xss_dom');"><i class="bi bi-play-fill me-1"></i>更新</button>
+                    </div>
+                    <small class="text-muted">提示: 尝试输入 <code>&lt;img src=x onerror=alert(1)&gt;</code></small>
+                </div>
+
+                <div class="mt-3">
+                    <h6>显示内容:</h6>
+                    <div id="contentDisplay" class="bg-light p-3 rounded border">
+                        请选择一个选项或输入自定义文本
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6>测试URL:</h6>
+                    <code id="testUrl" class="text-break">{{ test_url }}</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> 漏洞代码</div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded border mb-0"><code>// 漏洞代码：直接使用innerHTML插入用户输入
+function updateContent() {
+    var customText = document.getElementById('customText').value;
+    display.innerHTML = customText;  // 危险！
+}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>DOM型XSS中，payload在浏览器端被嵌入到DOM中执行，不需要服务器参与。</p>
+                <h6>常见源(Source)</h6>
+                <ul><li>URL参数</li><li>document.URL</li><li>location.href</li><li>用户输入</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">在自定义文本中输入HTML/JS代码</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>避免使用用户输入写入DOM</li><li>使用textContent而非innerHTML</li><li>输入验证</li><li>输出编码</li><li>CSP策略</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function updateContent() {
+    var lang = document.getElementById('language').value;
+    var customText = document.getElementById('customText').value;
+    var display = document.getElementById('contentDisplay');
+
+    if (lang === 'custom' && customText) {
+        display.innerHTML = customText;
+    } else if (lang) {
+        var texts = {
+            'english': 'You selected English',
+            'chinese': '你选择了中文',
+            'japanese': '日本語を選択しました',
+            'korean': '한국어를 선택했습니다'
+        };
+        display.innerHTML = texts[lang];
+    }
+}
+
+window.onload = function() {
+    var params = new URLSearchParams(window.location.search);
+    var defaultLang = params.get('default');
+    if (defaultLang) {
+        document.getElementById('language').value = 'custom';
+        document.getElementById('customText').value = defaultLang;
+        updateContent();
+        checkVulnPass('xss_dom');
+    }
+};
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - 命令注入{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-terminal-fill text-success me-2"></i>命令注入</h2>
+        <p class="text-muted mb-0">Command Injection - 在输入中注入系统命令</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('vuln_command_injection') }}" id="vulnForm">
+                    <div class="mb-3">
+                        <label class="form-label">Ping 目标主机</label>
+                        <input type="text" name="target" class="form-control" placeholder="输入IP地址或主机名 (如: 127.0.0.1)" value="{{ request.form.target if request.method == 'POST' else '' }}">
+                        <small class="text-muted">提示: 使用分号或管道符连接命令</small>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-play-fill me-1"></i>执行</button>
+                </form>
+
+                {% if result %}
+                <div class="mt-3">
+                    <h6>命令输出:</h6>
+                    <pre class="bg-dark text-success p-3 rounded" style="max-height:300px;overflow:auto;"><code>{{ result }}</code></pre>
+                </div>
+                {% endif %}
+
+                {% if error %}
+                <div class="alert alert-danger mt-3"><i class="bi bi-x-circle-fill me-1"></i>{{ error }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> Payload 参考</div>
+            <div class="card-body">
+                <h6>Windows 环境:</h6>
+                <ul>
+                    <li><code>127.0.0.1 & dir</code> — 列出目录</li>
+                    <li><code>127.0.0.1 & whoami</code> — 查看当前用户</li>
+                    <li><code>127.0.0.1 & ipconfig</code> — 网络配置</li>
+                    <li><code>127.0.0.1 & type ..\run.py</code> — 读取文件</li>
+                </ul>
+                <h6>Linux 环境:</h6>
+                <ul>
+                    <li><code>127.0.0.1; ls</code> — 列出目录</li>
+                    <li><code>127.0.0.1; cat /etc/passwd</code> — 读取系统文件</li>
+                    <li><code>127.0.0.1; whoami</code> — 查看当前用户</li>
+                    <li><code>127.0.0.1|id</code> — 管道符注入</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>命令注入允许攻击者在服务器上执行任意系统命令。通常发生在应用程序调用系统命令且用户输入未被正确过滤时。</p>
+                <h6>利用条件</h6>
+                <ul><li>应用程序调用系统命令</li><li>用户输入拼接到命令中</li><li>没有输入过滤</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">使用 <code>&</code>、<code>;</code>、<code>|</code>、<code>&&</code> 等连接命令</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>避免使用系统命令</li><li>使用安全的API</li><li>输入验证和过滤</li><li>使用白名单</li><li>最小权限原则</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+document.getElementById('vulnForm').addEventListener('submit', function() {
+    setTimeout(function(){ checkVulnPass('command_injection'); }, 2000);
+});
+</script>
+{% endblock %}

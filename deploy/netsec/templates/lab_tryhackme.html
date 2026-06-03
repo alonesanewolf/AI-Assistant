@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}TryHackMe - 靶场概览{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-controller text-primary me-2"></i>TryHackMe</h2>
+        <p class="text-muted mb-0">游戏化网络安全学习平台</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-primary d-flex align-items-start border-0 shadow-sm">
+    <i class="bi bi-lightbulb-fill text-warning fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于 TryHackMe：</strong>
+        TryHackMe 是一个面向初学者和中级安全爱好者的在线学习平台。它以"房间"为单位组织课程，
+        每个房间包含理论讲解和实操练习。平台内置虚拟机（AttackBox），无需本地配置环境即可开始学习，
+        是网络安全入门的最佳选择之一。
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-door-open fs-2 mb-2"></i>
+                <h3 class="mb-0">600+</h3>
+                <small>学习房间</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-controller fs-2 mb-2"></i>
+                <h3 class="mb-0">游戏化</h3>
+                <small>闯关模式</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-display fs-2 mb-2"></i>
+                <h3 class="mb-0">AttackBox</h3>
+                <small>内置虚拟机</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-mortarboard fs-2 mb-2"></i>
+                <h3 class="mb-0">学习路径</h3>
+                <small>系统化课程</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 学习路径 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-signpost-split me-1"></i> 官方学习路径
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>路径</th><th>内容</th><th>适合人群</th></tr></thead>
+                    <tbody>
+                        <tr><td>Pre-Security</td><td>安全基础入门</td><td><span class="badge bg-success">零基础</span></td></tr>
+                        <tr><td>Complete Beginner</td><td>安全全面入门</td><td><span class="badge bg-success">新手</span></td></tr>
+                        <tr><td>Web Fundamentals</td><td>Web 安全基础</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>Jr Penetration Tester</td><td>初级渗透测试</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>Offensive Pentesting</td><td>进阶渗透测试</td><td><span class="badge bg-danger">高级</span></td></tr>
+                        <tr><td>Red Team</td><td>红队攻击技术</td><td><span class="badge bg-danger">高级</span></td></tr>
+                        <tr><td>Security Engineer</td><td>安全工程师</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>SOC Level 1</td><td>安全运营中心</td><td><span class="badge bg-warning">中级</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 特色功能 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-stars me-1"></i> 平台特色
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-display me-2 text-warning"></i>AttackBox 内置虚拟机</h6>
+                    <p class="ms-4 text-muted">浏览器内即可使用 Kali 环境，无需本地安装。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-door-open me-2 text-primary"></i>房间制学习</h6>
+                    <p class="ms-4 text-muted">每个房间聚焦一个主题，理论 + 实操结合。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-trophy me-2 text-success"></i>积分和排名</h6>
+                    <p class="ms-4 text-muted">完成任务获取积分，全球排行榜激励学习。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-people me-2 text-info"></i>社区活跃</h6>
+                    <p class="ms-4 text-muted">Discord 社区实时讨论，互相帮助解决问题。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 环境信息 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-server me-1"></i> 平台信息
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>平台地址：</strong></td><td>tryhackme.com</td></tr>
+                        <tr><td><strong>连接方式：</strong></td><td>OpenVPN / AttackBox</td></tr>
+                        <tr><td><strong>免费内容：</strong></td><td>大量免费房间</td></tr>
+                        <tr><td><strong>付费版：</strong></td><td>Premium 解锁全部房间</td></tr>
+                        <tr><td><strong>适用人群：</strong></td><td>零基础 → 中级安全爱好者</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全提示 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 安全提示
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>非常适合零基础入门安全学习</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>AttackBox 免去环境配置烦恼</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>按学习路径循序渐进效率更高</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>禁止将技术用于非法用途</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>遵守法律法规和道德规范</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

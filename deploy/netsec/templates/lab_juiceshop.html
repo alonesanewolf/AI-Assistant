@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}OWASP Juice Shop - 靶场概览{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-shop text-info me-2"></i>OWASP Juice Shop</h2>
+        <p class="text-muted mb-0">OWASP 经典 Web 安全训练靶场</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-info d-flex align-items-start border-0 shadow-sm">
+    <i class="bi bi-lightbulb-fill text-warning fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于 OWASP Juice Shop：</strong>
+        Juice Shop 是一个故意包含数十种安全漏洞的 Web 应用程序，由 OWASP 维护。
+        它模拟了一个在线果汁商店，以"找 Flag"的游戏化方式引导学习者发现和利用漏洞，
+        是全球最受欢迎的 Web 安全学习平台之一。
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-flag fs-2 mb-2"></i>
+                <h3 class="mb-0">100+</h3>
+                <small>安全挑战</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-trophy fs-2 mb-2"></i>
+                <h3 class="mb-0">游戏化</h3>
+                <small>记分板系统</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-node-plus fs-2 mb-2"></i>
+                <h3 class="mb-0">Node.js</h3>
+                <small>Angular 前端</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-translate fs-2 mb-2"></i>
+                <h3 class="mb-0">多语言</h3>
+                <small>中文支持</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 挑战分类 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-flag me-1"></i> 挑战分类（按难度）
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>难度</th><th>颜色</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-success">★☆☆ 入门</span></td>
+                            <td>绿色</td>
+                            <td>基础漏洞，适合新手</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-warning">★★☆ 中级</span></td>
+                            <td>黄色</td>
+                            <td>需要一定技巧和思路</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-danger">★★★ 高级</span></td>
+                            <td>红色</td>
+                            <td>需要深入理解和组合利用</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <hr>
+                <h6 class="mt-3">常见漏洞类型：</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-primary">SQL 注入</span>
+                    <span class="badge bg-danger">XSS</span>
+                    <span class="badge bg-warning">CSRF</span>
+                    <span class="badge bg-info">敏感数据泄露</span>
+                    <span class="badge bg-success">访问控制</span>
+                    <span class="badge bg-dark">加密失败</span>
+                    <span class="badge bg-secondary">XXE</span>
+                    <span class="badge bg-danger">RCE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学习建议 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-lightbulb me-1"></i> 学习建议
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-1-circle-fill text-success me-2"></i>从记分板开始</h6>
+                    <p class="ms-4 text-muted">访问 /#/score-board 查看所有挑战和完成状态。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-2-circle-fill text-warning me-2"></i>先完成绿色挑战</h6>
+                    <p class="ms-4 text-muted">从入门级挑战入手，逐步理解漏洞原理。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-3-circle-fill text-danger me-2"></i>善用浏览器开发者工具</h6>
+                    <p class="ms-4 text-muted">F12 查看请求、修改参数、分析前端代码。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-4-circle-fill text-info me-2"></i>参考官方解题</h6>
+                    <p class="ms-4 text-muted">卡住时可参考官方 e-book（需付费）或社区解答。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 环境信息 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-server me-1"></i> 环境信息
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>版本：</strong></td><td>Juice Shop v14.x+</td></tr>
+                        <tr><td><strong>前端：</strong></td><td>Angular</td></tr>
+                        <tr><td><strong>后端：</strong></td><td>Node.js + Express</td></tr>
+                        <tr><td><strong>数据库：</strong></td><td>SQLite（内存）</td></tr>
+                        <tr><td><strong>运行方式：</strong></td><td>Docker / npm / Heroku</td></tr>
+                        <tr><td><strong>默认端口：</strong></td><td>3000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全提示 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 安全提示
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>内置记分板追踪挑战进度</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>支持中文界面，入门门槛低</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Docker 一键启动，环境隔离</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>禁止将技术用于非法用途</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>遵守法律法规，仅用于学习</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

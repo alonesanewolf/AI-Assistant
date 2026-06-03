@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - 反射型XSS{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-search text-warning me-2"></i>反射型XSS</h2>
+        <p class="text-muted mb-0">Reflected XSS - 恶意脚本通过URL参数反射到页面</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('vuln_xss_reflected') }}" id="vulnForm">
+                    <div class="mb-3">
+                        <label class="form-label">搜索内容</label>
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" placeholder="输入搜索内容" value="{{ search_value if search_value else '' }}">
+                            <button type="submit" class="btn btn-warning"><i class="bi bi-search me-1"></i>搜索</button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if search_value %}
+                <div class="mt-3">
+                    <h6>搜索结果:</h6>
+                    <div class="bg-light p-3 rounded">
+                        {% if xss_result %}
+                        {{ xss_result|safe }}
+                        {% else %}
+                        <p>未找到关于 "{{ search_value }}" 的结果</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> Payload 参考</div>
+            <div class="card-body">
+                <ul>
+                    <li><code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code></li>
+                    <li><code>&lt;img src=x onerror=alert('XSS')&gt;</code></li>
+                    <li><code>&lt;svg onload=alert('XSS')&gt;</code></li>
+                    <li><code>&lt;body onload=alert('XSS')&gt;</code></li>
+                </ul>
+                <h6 class="mt-3">测试URL:</h6>
+                <code class="text-break">{{ test_url }}</code>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>恶意脚本作为用户请求的一部分被服务器接收，然后未经处理地反射回浏览器执行。</p>
+                <h6>特点</h6>
+                <ul><li>需要诱导用户点击恶意链接</li><li>不在服务器存储</li><li>一次性攻击</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">在搜索框中输入script标签或事件处理器</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>输入验证和过滤</li><li>输出编码 (HTML Escape)</li><li>使用CSP</li><li>HTTPOnly Cookie</li><li>X-XSS-Protection头</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+document.getElementById('vulnForm').addEventListener('submit', function() {
+    setTimeout(function(){ checkVulnPass('xss_reflected'); }, 1500);
+});
+</script>
+{% endblock %}

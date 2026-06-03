@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}安全靶场{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">安全靶场</h2>
+        <p class="text-muted mb-0">
+            将网络安全工具功能以实验模块的形式集成到平台中，支持端口扫描、网络探测、WAF检测等。
+        </p>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    <strong>注意：</strong>
+    所有扫描功能仅允许用于本机、实验靶机、课程靶场或明确授权的目标。
+</div>
+
+<div class="row g-4 mt-2">
+
+    <!-- 端口扫描实验 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-router me-1"></i>端口扫描实验</h5>
+                <p class="card-text">
+                    对授权目标进行 TCP 端口扫描，识别开放端口，为后续服务识别与安全分析提供基础。
+                </p>
+                <ul class="small text-muted">
+                    <li>支持端口范围扫描</li>
+                    <li>后端调用 NetSecAssistant</li>
+                    <li>扫描结果保存到数据库</li>
+                </ul>
+                <a href="{{ url_for('port_scan_page') }}" class="btn btn-primary">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 网络探测实验 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-diagram-3 me-1"></i>网络探测实验</h5>
+                <p class="card-text">
+                    对目标主机或网段进行基础网络探测，判断目标是否在线。
+                </p>
+                <ul class="small text-muted">
+                    <li>主机存活探测</li>
+                    <li>网络连通性检测</li>
+                    <li>基于 network_scan.py</li>
+                </ul>
+                <a href="{{ url_for('network_scan_page') }}" class="btn btn-info text-white">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 服务指纹识别 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-danger">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-fingerprint me-1"></i>服务指纹识别</h5>
+                <p class="card-text">
+                    根据开放端口、Banner 信息或 HTTP 响应头识别服务类型和版本。
+                </p>
+                <ul class="small text-muted">
+                    <li>Banner 获取与分析</li>
+                    <li>服务类型判断</li>
+                    <li>版本信息识别</li>
+                </ul>
+                <a href="{{ url_for('fingerprint_page') }}" class="btn btn-danger">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- WAF 检测实验 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm" style="border-color: #7c3aed;">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-shield-lock me-1"></i>WAF 检测实验</h5>
+                <p class="card-text">
+                    对 Web 目标进行安全防护检测，判断是否存在 WAF 或安全防护设备。
+                </p>
+                <ul class="small text-muted">
+                    <li>发送检测请求</li>
+                    <li>分析响应特征</li>
+                    <li>判断可能的 WAF 类型</li>
+                </ul>
+                <a href="{{ url_for('waf_detect_page') }}" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed;">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web 目录扫描 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-folder2-open me-1"></i>Web 目录扫描</h5>
+                <p class="card-text">
+                    通过字典对 Web 站点目录和文件路径进行探测，发现潜在敏感路径。
+                </p>
+                <ul class="small text-muted">
+                    <li>目录字典扫描</li>
+                    <li>HTTP 状态码识别</li>
+                    <li>敏感路径发现</li>
+                </ul>
+                <a href="{{ url_for('web_dir_scan_page') }}" class="btn btn-warning">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 子域名枚举 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-globe me-1"></i>子域名枚举</h5>
+                <p class="card-text">
+                    通过字典对目标域名进行子域名爆破，发现有效的子域名。
+                </p>
+                <ul class="small text-muted">
+                    <li>子域名爆破</li>
+                    <li>DNS 解析验证</li>
+                    <li>多线程加速</li>
+                </ul>
+                <a href="{{ url_for('subdomain_enum_page') }}" class="btn btn-success">
+                    进入实验
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 扫描历史 -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clock-history me-1"></i>实验记录与报告</h5>
+                <p class="card-text">
+                    查看历史扫描任务、扫描结果和实验记录。
+                </p>
+                <ul class="small text-muted">
+                    <li>查看历史任务</li>
+                    <li>查看端口扫描结果</li>
+                    <li>后续支持报告导出</li>
+                </ul>
+                <a href="{{ url_for('scan_history') }}" class="btn btn-secondary">
+                    查看记录
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

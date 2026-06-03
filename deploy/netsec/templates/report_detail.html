@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}报告详情 - {{ report.title }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1">{{ report.title }}</h2>
+        <p class="text-muted mb-0">报告详情及分析结果</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('report_download', report_id=report.id) }}"
+           class="btn btn-success btn-sm">
+            <i class="bi bi-download"></i> 导出报告
+        </a>
+        <a href="{{ url_for('report_manage') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> 返回列表
+        </a>
+    </div>
+</div>
+
+<!-- 报告基本信息 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <i class="bi bi-info-circle"></i> 报告基本信息
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th style="width:120px;">报告ID</th>
+                        <td>{{ report.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>扫描类型</th>
+                        <td>
+                            {% if report.task_type == 'port_scan' %}
+                                <span class="badge bg-primary">端口扫描</span>
+                            {% elif report.task_type == 'network_scan' %}
+                                <span class="badge bg-info text-dark">网络探测</span>
+                            {% elif report.task_type == 'waf_detect' %}
+                                <span class="badge bg-warning text-dark">WAF检测</span>
+                            {% elif report.task_type == 'fingerprint' %}
+                                <span class="badge bg-secondary">指纹识别</span>
+                            {% elif report.task_type == 'webdir_scan' %}
+                                <span class="badge bg-success">目录扫描</span>
+                            {% elif report.task_type == 'subdomain_enum' %}
+                                <span class="badge bg-dark">子域名枚举</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ report.task_type }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>扫描目标</th>
+                        <td><code>{{ report.target }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>发现数量</th>
+                        <td><strong>{{ report.open_count }}</strong></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th style="width:120px;">风险等级</th>
+                        <td>
+                            {% if report.risk_level == 'critical' %}
+                                <span class="badge bg-danger fs-6">严重</span>
+                            {% elif report.risk_level == 'high' %}
+                                <span class="badge bg-warning text-dark fs-6">高危</span>
+                            {% elif report.risk_level == 'medium' %}
+                                <span class="badge bg-info text-dark fs-6">中危</span>
+                            {% else %}
+                                <span class="badge bg-success fs-6">低危</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>生成时间</th>
+                        <td>{{ report.created_at }}</td>
+                    </tr>
+                    <tr>
+                        <th>生成用户</th>
+                        <td>{{ report.username }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 报告摘要 -->
+{% if report.summary %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-info text-white">
+        <i class="bi bi-card-text"></i> 报告摘要
+    </div>
+    <div class="card-body">
+        <p class="mb-0">{{ report.summary }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- 详细内容 -->
+{% if report.detail %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-list-check"></i> 详细结果
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            {{ report.detail | safe }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 安全建议 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-shield-check"></i> 安全建议
+    </div>
+    <div class="card-body">
+        <ul class="mb-0">
+            {% if report.risk_level == 'critical' or report.risk_level == 'high' %}
+            <li>发现高风险漏洞，建议立即修复并加强安全防护。</li>
+            <li>对暴露的服务端口进行访问控制，限制不必要的访问。</li>
+            <li>定期进行安全扫描和漏洞评估。</li>
+            {% elif report.risk_level == 'medium' %}
+            <li>发现中危风险，建议在近期安排修复。</li>
+            <li>关注服务版本更新，及时修补已知漏洞。</li>
+            {% else %}
+            <li>当前扫描未发现明显安全风险。</li>
+            <li>建议保持定期安全扫描的习惯。</li>
+            {% endif %}
+            <li>本报告仅用于授权范围内的安全测试参考。</li>
+        </ul>
+    </div>
+</div>
+
+<!-- 操作按钮 -->
+<div class="d-flex gap-2">
+    <a href="{{ url_for('report_download', report_id=report.id) }}"
+       class="btn btn-success">
+        <i class="bi bi-download"></i> 导出为文本
+    </a>
+    <form method="post" action="{{ url_for('report_delete', report_id=report.id) }}"
+          onsubmit="return confirm('确认删除该报告？此操作不可恢复。');">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> 删除报告
+        </button>
+    </form>
+    <a href="{{ url_for('report_manage') }}" class="btn btn-outline-secondary">
+        返回报告列表
+    </a>
+</div>
+
+{% endblock %}

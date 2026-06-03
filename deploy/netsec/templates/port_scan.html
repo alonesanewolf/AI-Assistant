@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}端口扫描{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+    <h2 class="mb-1">端口扫描实验</h2>
+    <p class="text-muted mb-0">
+        请输入授权目标和端口范围，系统会调用后端扫描模块并保存扫描结果。
+    </p>
+</div>
+
+<div class="alert alert-warning">
+    <strong>安全提示：</strong>
+    请只扫描本机、虚拟机、课程靶场或明确授权的目标。
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        扫描参数
+    </div>
+
+    <div class="card-body">
+
+        <form method="post" action="{{ url_for('port_scan_page') }}">
+
+            <div class="mb-3">
+                <label class="form-label">扫描目标</label>
+                <input type="text"
+                       class="form-control"
+                       name="target"
+                       placeholder="例如：127.0.0.1 或 192.168.1.10"
+                       required>
+                <div class="form-text">
+                    可以填写 IP 地址或域名。
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">端口范围</label>
+                <input type="text"
+                       class="form-control"
+                       name="ports"
+                       value="1-1024"
+                       required>
+                <div class="form-text">
+                    支持格式：80、80,443,8080、1-1024。
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">超时时间（秒）</label>
+                <input type="number"
+                       class="form-control"
+                       name="timeout"
+                       value="1"
+                       min="0.1"
+                       step="0.1">
+                <div class="form-text">
+                    单个端口连接等待时间，数值越大扫描越慢。
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">线程数</label>
+                <input type="number"
+                       class="form-control"
+                       name="workers"
+                       value="50"
+                       min="1"
+                       max="200">
+                <div class="form-text">
+                    建议 20~100，过大可能导致系统卡顿。
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    开始扫描
+                </button>
+
+                <a href="{{ url_for('range_page') }}" class="btn btn-secondary">
+                    返回安全靶场
+                </a>
+
+                <a href="{{ url_for('scan_history') }}" class="btn btn-outline-success">
+                    查看历史
+                </a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

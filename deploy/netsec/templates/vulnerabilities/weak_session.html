@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - 弱会话ID{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-key-fill text-primary me-2"></i>弱会话ID</h2>
+        <p class="text-muted mb-0">Weak Session ID - 会话ID可预测，可被伪造</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <div class="alert alert-light border">
+                    <strong>当前会话ID:</strong> <code id="currentSessionId" class="fs-5">{{ session_id }}</code>
+                    <br><small class="text-muted">观察会话ID的生成规律</small>
+                </div>
+
+                <button class="btn btn-outline-primary mb-3" onclick="generateNewSession()">
+                    <i class="bi bi-arrow-repeat me-1"></i>生成新会话ID
+                </button>
+
+                <div class="mb-3" id="sessionHistory">
+                    <h6>会话ID历史记录:</h6>
+                    <ul class="list-group list-group-flush small">
+                        <li class="list-group-item text-muted" id="historyList">{{ session_id }}</li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('vuln_weak_session') }}" id="vulnForm">
+                    <div class="mb-3">
+                        <label class="form-label">设置会话ID (伪造会话)</label>
+                        <input type="text" name="session_id" class="form-control" placeholder="输入会话ID">
+                        <small class="text-muted">尝试使用有规律的ID进行会话劫持</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>设置会话</button>
+                </form>
+
+                {% if success %}
+                <div class="alert alert-success mt-3"><i class="bi bi-check-circle-fill me-1"></i><strong>会话设置成功！</strong> 当前会话ID: {{ success }}</div>
+                {% endif %}
+
+                <div class="card bg-light mt-3">
+                    <div class="card-body">
+                        <h6>会话ID生成算法分析:</h6>
+                        <ul>
+                            <li>使用递增数字 + 时间戳</li>
+                            <li>格式: <code>sess_[序号]_[时间戳]</code></li>
+                            <li>示例: <code>sess_1_1713000000</code></li>
+                            <li>序号可预测，时间戳可推算</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>弱会话ID是指会话标识符的生成方式不够随机或可预测，攻击者可以通过分析规律来伪造有效的会话。</p>
+                <h6>攻击场景</h6>
+                <ul><li>会话劫持</li><li>会话预测</li><li>固定会话攻击</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">多次生成会话ID，观察规律，尝试预测下一个</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>使用加密安全的随机数生成器</li><li>会话ID长度足够长 (128位+)</li><li>会话超时机制</li><li>会话ID换新</li><li>绑定IP和User-Agent</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+var historyItems = ['{{ session_id }}'];
+
+function generateNewSession() {
+    fetch('{{ url_for("vuln_weak_session_gen") }}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('currentSessionId').textContent = data.session_id;
+            historyItems.push(data.session_id);
+            var listEl = document.getElementById('historyList');
+            listEl.innerHTML = historyItems.map(function(s){
+                return '<code>' + s + '</code>';
+            }).join('<br>');
+            checkVulnPass('weak_session_id');
+        });
+}
+document.getElementById('vulnForm').addEventListener('submit', function() {
+    setTimeout(function(){ checkVulnPass('weak_session_id'); }, 1500);
+});
+</script>
+{% endblock %}

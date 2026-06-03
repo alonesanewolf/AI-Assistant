@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}日志审计{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-journal-text text-success me-2"></i>日志审计</h2>
+        <p class="text-muted mb-0">查看系统操作日志和登录记录</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-danger shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-shield-exclamation fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ login_stats.failed }}</h3>
+                <small>登录失败次数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-person-check fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ login_stats.success }}</h3>
+                <small>登录成功次数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-lock fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ login_stats.locked }}</h3>
+                <small>IP 锁定次数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-search fs-2 mb-2"></i>
+                <h3 class="mb-0">{{ scan_stats.total }}</h3>
+                <small>扫描任务总数</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 登录安全日志 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-lock me-1"></i>登录安全记录</span>
+        <span class="badge bg-light text-dark">最近 {{ login_attempts|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>IP 地址</th>
+                    <th>失败次数</th>
+                    <th>锁定状态</th>
+                    <th>锁定截止时间</th>
+                    <th>最后更新</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt in login_attempts %}
+                <tr>
+                    <td><code>{{ attempt.ip_address }}</code></td>
+                    <td>
+                        {% if attempt.failed_count >= 5 %}
+                        <span class="badge bg-danger">{{ attempt.failed_count }}</span>
+                        {% elif attempt.failed_count >= 3 %}
+                        <span class="badge bg-warning text-dark">{{ attempt.failed_count }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ attempt.failed_count }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if attempt.lock_until and attempt.lock_until > now %}
+                        <span class="badge bg-danger">已锁定</span>
+                        {% elif attempt.lock_until %}
+                        <span class="badge bg-success">已解锁</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark">正常</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ attempt.lock_until.strftime('%Y-%m-%d %H:%M:%S') if attempt.lock_until else '-' }}</td>
+                    <td>{{ attempt.updated_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.updated_at else '-' }}</td>
+                    <td>
+                        {% if attempt.failed_count > 0 %}
+                        <form method="post" action="{{ url_for('admin_log_clear_ip') }}" style="display:inline;">
+                            <input type="hidden" name="ip_address" value="{{ attempt.ip_address }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('确定要清除该 IP 的失败记录吗？')">
+                                <i class="bi bi-unlock me-1"></i>解锁
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not login_attempts %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">暂无登录安全记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 扫描任务日志 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-task me-1"></i>扫描任务日志</span>
+        <span class="badge bg-light text-dark">最近 {{ scan_tasks|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>任务ID</th>
+                    <th>用户</th>
+                    <th>类型</th>
+                    <th>目标</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>完成时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in scan_tasks %}
+                <tr>
+                    <td><code>#{{ task.id }}</code></td>
+                    <td>{{ task.username }}</td>
+                    <td>
+                        {% if task.task_type == 'port_scan' %}
+                        <span class="badge bg-success">端口扫描</span>
+                        {% elif task.task_type == 'network_scan' %}
+                        <span class="badge bg-info">网络探测</span>
+                        {% elif task.task_type == 'waf_detect' %}
+                        <span class="badge bg-purple" style="background:#7c3aed;">WAF检测</span>
+                        {% elif task.task_type == 'fingerprint' %}
+                        <span class="badge bg-danger">指纹识别</span>
+                        {% elif task.task_type == 'web_dir_scan' %}
+                        <span class="badge bg-warning text-dark">目录扫描</span>
+                        {% elif task.task_type == 'subdomain_enum' %}
+                        <span class="badge bg-dark">子域名枚举</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ task.task_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ task.target }}</code></td>
+                    <td>
+                        {% if task.status == 'done' %}
+                        <span class="badge bg-success">完成</span>
+                        {% elif task.status == 'running' %}
+                        <span class="badge bg-warning text-dark">运行中</span>
+                        {% elif task.status == 'failed' %}
+                        <span class="badge bg-danger">失败</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ task.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ task.created_at.strftime('%Y-%m-%d %H:%M:%S') if task.created_at else '-' }}</td>
+                    <td>{{ task.finished_at.strftime('%Y-%m-%d %H:%M:%S') if task.finished_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not scan_tasks %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">暂无扫描任务记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 通关记录日志 -->
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-trophy me-1"></i>通关记录日志</span>
+        <span class="badge bg-light text-dark">最近 {{ progress_records|length }} 条</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>用户ID</th>
+                    <th>漏洞标识</th>
+                    <th>难度</th>
+                    <th>状态</th>
+                    <th>尝试次数</th>
+                    <th>通关时间</th>
+                    <th>最后更新</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in progress_records %}
+                <tr>
+                    <td>{{ record.user_id }}</td>
+                    <td><code>{{ record.vuln_id }}</code></td>
+                    <td>
+                        {% if record.difficulty == 'low' %}
+                        <span class="badge bg-success">Low</span>
+                        {% elif record.difficulty == 'medium' %}
+                        <span class="badge bg-warning text-dark">Medium</span>
+                        {% else %}
+                        <span class="badge bg-danger">High</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.status == 'passed' %}
+                        <span class="badge bg-success">已通关</span>
+                        {% elif record.status == 'in_progress' %}
+                        <span class="badge bg-warning text-dark">进行中</span>
+                        {% else %}
+                        <span class="badge bg-secondary">未开始</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ record.attempts }}</td>
+                    <td>{{ record.passed_at.strftime('%Y-%m-%d %H:%M:%S') if record.passed_at else '-' }}</td>
+                    <td>{{ record.updated_at.strftime('%Y-%m-%d %H:%M:%S') if record.updated_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not progress_records %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">暂无通关记录</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

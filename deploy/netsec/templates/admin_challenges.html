@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}题目管理{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-gear-fill text-primary me-2"></i>题目管理</h2>
+        <p class="text-muted mb-0">管理系统中的漏洞练习题目</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addVulnModal">
+        <i class="bi bi-plus-circle me-1"></i>新增题目
+    </button>
+</div>
+
+<!-- 题目列表 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-list-task me-1"></i> 题目列表
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>漏洞标识</th>
+                    <th>名称</th>
+                    <th>分类</th>
+                    <th>难度</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vuln in vulnerabilities %}
+                <tr>
+                    <td>{{ vuln.id }}</td>
+                    <td><code>{{ vuln.vuln_id }}</code></td>
+                    <td>{{ vuln.name }}</td>
+                    <td><span class="badge bg-light text-dark">{{ vuln.category }}</span></td>
+                    <td>
+                        <span class="badge badge-{{ 'low' if vuln.difficulty == 'low' else 'medium' if vuln.difficulty == 'medium' else 'high' }}">
+                            {{ vuln.difficulty|upper }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if vuln.is_active %}
+                        <span class="badge bg-success">启用</span>
+                        {% else %}
+                        <span class="badge bg-secondary">禁用</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            {% set vuln_url = vuln_urls.get(vuln.vuln_id) %}
+                            {% if vuln_url %}
+                            <a href="{{ vuln_url }}" class="btn btn-outline-primary" title="练习"><i class="bi bi-play-fill"></i></a>
+                            {% endif %}
+                            <button class="btn btn-outline-warning" onclick="editVuln({{ vuln.id }}, '{{ vuln.vuln_id }}', '{{ vuln.name }}', '{{ vuln.category }}', '{{ vuln.difficulty }}', {{ 1 if vuln.is_active else 0 }})" title="编辑">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-{{ 'danger' if vuln.is_active else 'success' }}"
+                                    onclick="toggleVuln({{ vuln.id }}, {{ 0 if vuln.is_active else 1 }})"
+                                    title="{{ '禁用' if vuln.is_active else '启用' }}">
+                                <i class="bi bi-{{ 'x-circle' if vuln.is_active else 'check-circle' }}"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteVuln({{ vuln.id }}, '{{ vuln.name }}')" title="删除">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 统计与操作 -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white"><i class="bi bi-pie-chart me-1"></i> 题目分类统计</div>
+            <div class="card-body">
+                <table class="table table-striped mb-0">
+                    <thead><tr><th>分类</th><th>题目数</th></tr></thead>
+                    <tbody>
+                        {% for category, count in category_stats.items() %}
+                        <tr><td>{{ category }}</td><td><span class="badge bg-primary">{{ count }}</span></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-lightning me-1"></i> 快速操作</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-primary"><i class="bi bi-bug me-1"></i>进入漏洞练习</a>
+                    <a href="{{ url_for('progress_page') }}" class="btn btn-success"><i class="bi bi-trophy me-1"></i>查看通关记录</a>
+                    <button class="btn btn-outline-secondary" onclick="location.reload()"><i class="bi bi-arrow-repeat me-1"></i>刷新页面</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增题目 Modal -->
+<div class="modal fade" id="addVulnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i>新增题目</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_challenges_add') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">漏洞标识</label>
+                        <input type="text" name="vuln_id" class="form-control" placeholder="如: xss_new" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">名称</label>
+                        <input type="text" name="name" class="form-control" placeholder="如: 新XSS漏洞" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">分类</label>
+                        <select name="category" class="form-select">
+                            <option value="认证">认证</option>
+                            <option value="注入">注入</option>
+                            <option value="XSS">XSS</option>
+                            <option value="文件">文件</option>
+                            <option value="客户端">客户端</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">难度</label>
+                        <select name="difficulty" class="form-select">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea name="description_zh" class="form-control" rows="3" placeholder="漏洞描述"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">提示</label>
+                        <input type="text" name="hint" class="form-control" placeholder="解题提示">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑题目 Modal -->
+<div class="modal fade" id="editVulnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-pencil me-1"></i>编辑题目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_challenges_edit') }}">
+                <input type="hidden" name="vuln_db_id" id="editVulnId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">漏洞标识</label>
+                        <input type="text" name="vuln_id" id="editVulnVulnId" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">名称</label>
+                        <input type="text" name="name" id="editVulnName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">分类</label>
+                        <select name="category" id="editVulnCategory" class="form-select">
+                            <option value="认证">认证</option>
+                            <option value="注入">注入</option>
+                            <option value="XSS">XSS</option>
+                            <option value="文件">文件</option>
+                            <option value="客户端">客户端</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">难度</label>
+                        <select name="difficulty" id="editVulnDifficulty" class="form-select">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select name="is_active" id="editVulnActive" class="form-select">
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg me-1"></i>保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认 Modal -->
+<div class="modal fade" id="deleteVulnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>确认删除</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_challenges_delete') }}">
+                <input type="hidden" name="vuln_db_id" id="deleteVulnId">
+                <div class="modal-body">
+                    <p>确定要删除题目 <strong id="deleteVulnName"></strong> 吗？此操作不可撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>确认删除</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function editVuln(id, vulnId, name, category, difficulty, isActive) {
+    document.getElementById('editVulnId').value = id;
+    document.getElementById('editVulnVulnId').value = vulnId;
+    document.getElementById('editVulnName').value = name;
+    document.getElementById('editVulnCategory').value = category;
+    document.getElementById('editVulnDifficulty').value = difficulty;
+    document.getElementById('editVulnActive').value = isActive;
+    new bootstrap.Modal(document.getElementById('editVulnModal')).show();
+}
+
+function toggleVuln(id, newStatus) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("admin_challenges_toggle") }}';
+    var idField = document.createElement('input');
+    idField.type = 'hidden';
+    idField.name = 'vuln_db_id';
+    idField.value = id;
+    var statusField = document.createElement('input');
+    statusField.type = 'hidden';
+    statusField.name = 'is_active';
+    statusField.value = newStatus;
+    form.appendChild(idField);
+    form.appendChild(statusField);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function deleteVuln(id, name) {
+    document.getElementById('deleteVulnId').value = id;
+    document.getElementById('deleteVulnName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteVulnModal')).show();
+}
+</script>
+{% endblock %}

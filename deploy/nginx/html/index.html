@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant 统一平台</title>
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --card-bg: #111827;
+            --card-hover: #1a2332;
+            --border: #1e2d3d;
+            --accent: #3b82f6;
+            --accent2: #8b5cf6;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --text: #e2e8f0;
+            --text2: #94a3b8;
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: 
+                radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .logo-icon {
+            width: 72px; height: 72px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.25);
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle {
+            color: var(--text2);
+            font-size: 15px;
+            font-weight: 400;
+        }
+        
+        /* Cards Grid */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            transition: all 0.25s ease;
+        }
+        .card:hover {
+            background: var(--card-hover);
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+        .card.card-ai::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .card.card-netsec::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+        .card.card-brain::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .card.card-tomcat::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .card:hover::before { height: 4px; }
+        
+        .card .card-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-bottom: 16px;
+        }
+        .card-ai .card-icon { background: rgba(59, 130, 246, 0.15); }
+        .card-netsec .card-icon { background: rgba(239, 68, 68, 0.15); }
+        .card-brain .card-icon { background: rgba(139, 92, 246, 0.15); }
+        .card-tomcat .card-icon { background: rgba(245, 158, 11, 0.15); }
+        
+        .card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .card p {
+            color: var(--text2);
+            font-size: 14px;
+            line-height: 1.6;
+            flex: 1;
+        }
+        .card .badge-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .badge-purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-orange { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        
+        /* Status Bar */
+        .status-bar {
+            margin-top: 40px;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text2);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+        }
+        .status-dot.online { background: var(--green); box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+        .status-dot.offline { background: var(--red); }
+        
+        /* Footer */
+        .footer {
+            margin-top: 48px;
+            color: var(--text2);
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        /* Responsive */
+        @media (max-width: 700px) {
+            .header h1 { font-size: 24px; }
+            .cards { grid-template-columns: 1fr; }
+            .card { padding: 20px; }
+        }
+        
+        /* Quick links row */
+        .quick-links {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .quick-link {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: var(--text2);
+            font-size: 13px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .quick-link:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            background: rgba(59, 130, 246, 0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-icon">&#x1f916;</div>
+        <h1>AI Assistant 统一平台</h1>
+        <p class="subtitle">AI 智能助手 &middot; 网络安全实验 &middot; 云端大脑 &middot; 一站式管理</p>
+    </div>
+
+    <div class="cards">
+        <!-- AI 智能助手 -->
+        <a href="/ai/" class="card card-ai">
+            <div class="card-icon">&#x1f4ac;</div>
+            <h3>AI 智能助手</h3>
+            <p>本地 AI 对话机器人，支持电脑操控、文件管理、网页搜索、截图、定时任务等功能。集成 DeepSeek 云端模型与 Ollama 本地模型。</p>
+            <div class="badge-row">
+                <span class="badge badge-blue">AI 对话</span>
+                <span class="badge badge-green">电脑操控</span>
+                <span class="badge badge-purple">多模型</span>
+            </div>
+        </a>
+
+        <!-- 网络安全助手 -->
+        <a href="/netsec/" class="card card-netsec">
+            <div class="card-icon">&#x1f6e1;</div>
+            <h3>网络安全助手</h3>
+            <p>DVWA 风格漏洞练习平台，包含 14 道 Web 安全题目。支持端口扫描、WAF 检测、子域名枚举、服务指纹识别等安全工具。</p>
+            <div class="badge-row">
+                <span class="badge badge-red">漏洞练习</span>
+                <span class="badge badge-orange">安全扫描</span>
+                <span class="badge badge-green">14 道题目</span>
+            </div>
+        </a>
+
+        <!-- 云端大脑 -->
+        <a href="/brain/" class="card card-brain">
+            <div class="card-icon">&#x1f9e0;</div>
+            <h3>云端大脑</h3>
+            <p>中心化的 AI 调度中枢，支持多 Agent 管理、任务分发、设备遥控。保持手机端与电脑端的无缝联动。</p>
+            <div class="badge-row">
+                <span class="badge badge-purple">Agent 管理</span>
+                <span class="badge badge-blue">任务调度</span>
+                <span class="badge badge-green">远程控制</span>
+            </div>
+        </a>
+
+        <!-- Tomcat (可选) -->
+        <a href="http://localhost:8089/" class="card card-tomcat" id="tomcatCard" style="display:none;">
+            <div class="card-icon">&#x2600;</div>
+            <h3>Apache Tomcat</h3>
+            <p>Java Web 应用服务器，可用于部署 Java 项目、Servlet/JSP 应用、Spring Boot 服务等。</p>
+            <div class="badge-row">
+                <span class="badge badge-orange">Java 8</span>
+                <span class="badge badge-blue">Tomcat 8.5</span>
+            </div>
+        </a>
+    </div>
+
+    <div class="quick-links">
+        <a href="/health" class="quick-link">健康检查</a>
+        <a href="/netsec/dvwa/overview" class="quick-link">DVWA 概览</a>
+        <a href="/netsec/scan/port" class="quick-link">端口扫描</a>
+        <a href="/api/status" class="quick-link">API 状态</a>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-dot online" id="dot-ai"></span>
+            <span>AI 助手</span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot online" id="dot-netsec"></span>
+            <span>网络安全助手</span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot online" id="dot-brain"></span>
+            <span>云端大脑</span>
+        </div>
+        <div class="status-item" id="status-tomcat" style="display:none;">
+            <span class="status-dot online" id="dot-tomcat"></span>
+            <span>Tomcat</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        AI Assistant 统一平台 &copy; 2026 &nbsp;|&nbsp; 
+        服务器时间: <span id="serverTime">--</span>
+    </div>
+
+    <script>
+        // 更新服务器时间
+        function updateTime() {
+            document.getElementById('serverTime').textContent = new Date().toLocaleString('zh-CN');
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // 检测各服务状态
+        async function checkService(url, dotId) {
+            try {
+                const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+                const dot = document.getElementById(dotId);
+                if (resp.ok) {
+                    dot.className = 'status-dot online';
+                } else {
+                    dot.className = 'status-dot offline';
+                }
+            } catch(e) {
+                document.getElementById(dotId).className = 'status-dot offline';
+            }
+        }
+
+        // 检测 Tomcat 是否可用
+        async function checkTomcat() {
+            try {
+                const resp = await fetch('http://localhost:8089/', { signal: AbortSignal.timeout(2000) });
+                if (resp.ok || resp.status < 500) {
+                    document.getElementById('tomcatCard').style.display = 'flex';
+                    document.getElementById('status-tomcat').style.display = 'flex';
+                }
+            } catch(e) {}
+        }
+
+        checkService('/', 'dot-ai');
+        checkService('/netsec/', 'dot-netsec');
+        checkService('/health', 'dot-brain');
+        checkTomcat();
+
+        // 每 30 秒重新检测
+        setInterval(() => {
+            checkService('/', 'dot-ai');
+            checkService('/netsec/', 'dot-netsec');
+            checkService('/health', 'dot-brain');
+        }, 30000);
+    </script>
+</body>
+</html>

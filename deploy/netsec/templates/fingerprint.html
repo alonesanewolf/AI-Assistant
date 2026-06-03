@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}服务指纹识别{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="bi bi-fingerprint me-2"></i>服务指纹识别</h2>
+    <p class="text-muted mb-0">
+        根据开放端口的 Banner 信息识别服务类型和版本。
+    </p>
+</div>
+
+<div class="alert alert-warning">
+    <strong>安全提示：</strong>
+    请只对授权的目标进行指纹识别。
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-gear me-1"></i> 识别参数
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('fingerprint_page') }}">
+                    <div class="mb-3">
+                        <label class="form-label">目标地址</label>
+                        <input type="text" class="form-control" name="target"
+                               placeholder="例如：192.168.1.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">端口列表</label>
+                        <input type="text" class="form-control" name="ports"
+                               value="22,80,443,3306,8080">
+                        <div class="form-text">逗号分隔，如 22,80,443,3306</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">超时时间（秒）</label>
+                        <input type="number" class="form-control" name="timeout"
+                               value="2" min="0.5" step="0.5">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-search me-1"></i>开始识别
+                        </button>
+                        <a href="{{ url_for('range_page') }}" class="btn btn-secondary">返回</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if results is not none %}
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-fingerprint me-1"></i> 识别结果
+            </div>
+            <div class="card-body">
+                {% if results %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>端口</th>
+                                <th>状态</th>
+                                <th>服务类型</th>
+                                <th>Banner 信息</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in results %}
+                            <tr>
+                                <td><code>{{ r.port }}</code></td>
+                                <td>
+                                    {% if r.status == '开放' %}
+                                    <span class="badge bg-success">开放</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ r.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-info text-dark">{{ r.service }}</span></td>
+                                <td><small>{{ r.banner }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i> 未发现开放端口或无法获取 Banner。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3">
+            <strong>错误：</strong>{{ error }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

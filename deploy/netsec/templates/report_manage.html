@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}报告管理{% endblock %}
+
+{% block content %}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1">报告管理</h2>
+        <p class="text-muted mb-0">查看、导出和管理所有扫描报告。</p>
+    </div>
+    <a href="{{ url_for('scan_history') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> 返回扫描历史
+    </a>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total }}</h3>
+                <small>报告总数</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-danger text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.critical }}</h3>
+                <small>严重风险</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-warning text-dark">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.high }}</h3>
+                <small>高风险</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.low }}</h3>
+                <small>低风险</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选区域 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1">扫描类型</label>
+                <select name="task_type" class="form-select form-select-sm">
+                    <option value="">全部类型</option>
+                    <option value="port_scan" {% if filter_type == 'port_scan' %}selected{% endif %}>端口扫描</option>
+                    <option value="network_scan" {% if filter_type == 'network_scan' %}selected{% endif %}>网络探测</option>
+                    <option value="waf_detect" {% if filter_type == 'waf_detect' %}selected{% endif %}>WAF检测</option>
+                    <option value="fingerprint" {% if filter_type == 'fingerprint' %}selected{% endif %}>指纹识别</option>
+                    <option value="webdir_scan" {% if filter_type == 'webdir_scan' %}selected{% endif %}>目录扫描</option>
+                    <option value="subdomain_enum" {% if filter_type == 'subdomain_enum' %}selected{% endif %}>子域名枚举</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1">风险等级</label>
+                <select name="risk_level" class="form-select form-select-sm">
+                    <option value="">全部等级</option>
+                    <option value="critical" {% if filter_risk == 'critical' %}selected{% endif %}>严重</option>
+                    <option value="high" {% if filter_risk == 'high' %}selected{% endif %}>高危</option>
+                    <option value="medium" {% if filter_risk == 'medium' %}selected{% endif %}>中危</option>
+                    <option value="low" {% if filter_risk == 'low' %}selected{% endif %}>低危</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1">关键词</label>
+                <input type="text" name="keyword" class="form-control form-control-sm"
+                       placeholder="搜索目标或标题" value="{{ filter_keyword }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary btn-sm me-2">
+                    <i class="bi bi-search"></i> 筛选
+                </button>
+                <a href="{{ url_for('report_manage') }}" class="btn btn-outline-secondary btn-sm">
+                    重置
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 报告列表 -->
+<div class="card shadow-sm">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark-text"></i> 扫描报告</span>
+        <span class="badge bg-light text-dark">{{ reports|length }} 条</span>
+    </div>
+
+    <div class="card-body p-0">
+        {% if reports %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:60px;">ID</th>
+                        <th>报告标题</th>
+                        <th style="width:100px;">扫描类型</th>
+                        <th>扫描目标</th>
+                        <th style="width:80px;">风险等级</th>
+                        <th style="width:80px;">发现数</th>
+                        <th style="width:160px;">生成时间</th>
+                        <th style="width:200px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for report in reports %}
+                    <tr>
+                        <td>{{ report.id }}</td>
+                        <td>
+                            <a href="{{ url_for('report_detail', report_id=report.id) }}">
+                                {{ report.title }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if report.task_type == 'port_scan' %}
+                                <span class="badge bg-primary">端口扫描</span>
+                            {% elif report.task_type == 'network_scan' %}
+                                <span class="badge bg-info text-dark">网络探测</span>
+                            {% elif report.task_type == 'waf_detect' %}
+                                <span class="badge bg-warning text-dark">WAF检测</span>
+                            {% elif report.task_type == 'fingerprint' %}
+                                <span class="badge bg-secondary">指纹识别</span>
+                            {% elif report.task_type == 'webdir_scan' %}
+                                <span class="badge bg-success">目录扫描</span>
+                            {% elif report.task_type == 'subdomain_enum' %}
+                                <span class="badge bg-dark">子域名枚举</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ report.task_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ report.target }}</code></td>
+                        <td>
+                            {% if report.risk_level == 'critical' %}
+                                <span class="badge bg-danger">严重</span>
+                            {% elif report.risk_level == 'high' %}
+                                <span class="badge bg-warning text-dark">高危</span>
+                            {% elif report.risk_level == 'medium' %}
+                                <span class="badge bg-info text-dark">中危</span>
+                            {% else %}
+                                <span class="badge bg-success">低危</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ report.open_count }}</strong></td>
+                        <td>{{ report.created_at }}</td>
+                        <td>
+                            <a href="{{ url_for('report_detail', report_id=report.id) }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> 查看
+                            </a>
+                            <a href="{{ url_for('report_download', report_id=report.id) }}"
+                               class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-download"></i> 导出
+                            </a>
+                            <form method="post" action="{{ url_for('report_delete', report_id=report.id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('确认删除该报告？此操作不可恢复。');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-2">暂无扫描报告</p>
+            <a href="{{ url_for('scan_history') }}" class="btn btn-primary btn-sm">
+                前往扫描历史生成报告
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

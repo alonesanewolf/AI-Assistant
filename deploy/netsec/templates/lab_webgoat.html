@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}WebGoat - 靶场概览{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-exclamation-triangle-fill text-success me-2"></i>WebGoat</h2>
+        <p class="text-muted mb-0">OWASP WebGoat - 交互式 Web 安全学习平台</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>返回首页
+    </a>
+</div>
+
+<div class="alert alert-success d-flex align-items-start border-0 shadow-sm">
+    <i class="bi bi-lightbulb-fill text-warning fs-5 me-3 mt-1"></i>
+    <div>
+        <strong>关于 WebGoat：</strong>
+        WebGoat 是 OWASP 维护的一个故意不安全的 Web 应用程序，旨在教授 Web 安全课程。
+        它的设计理念是"边学边做"，每个漏洞都配有详细的课程说明和交互式练习，
+        是 Web 安全入门的经典学习平台。
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-book fs-2 mb-2"></i>
+                <h3 class="mb-0">30+</h3>
+                <small>课程章节</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-code-slash fs-2 mb-2"></i>
+                <h3 class="mb-0">Java</h3>
+                <small>Spring Boot</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-mortarboard fs-2 mb-2"></i>
+                <h3 class="mb-0">交互式</h3>
+                <small>边学边做</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-2 mb-2"></i>
+                <h3 class="mb-0">OWASP</h3>
+                <small>官方维护</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 课程分类 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-journal-code me-1"></i> 课程分类
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>分类</th><th>课程数量</th><th>难度</th></tr></thead>
+                    <tbody>
+                        <tr><td>SQL 注入</td><td>5+</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>XSS 跨站脚本</td><td>4+</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>访问控制</td><td>3+</td><td><span class="badge bg-danger">高级</span></td></tr>
+                        <tr><td>认证缺陷</td><td>4+</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>加密失败</td><td>3+</td><td><span class="badge bg-danger">高级</span></td></tr>
+                        <tr><td>请求伪造</td><td>3+</td><td><span class="badge bg-warning">中级</span></td></tr>
+                        <tr><td>安全配置</td><td>4+</td><td><span class="badge bg-success">入门</span></td></tr>
+                        <tr><td>反序列化</td><td>2+</td><td><span class="badge bg-danger">高级</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学习路径 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-signpost-split me-1"></i> 推荐学习路径
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-1-circle-fill text-success me-2"></i>入门阶段</h6>
+                    <p class="ms-4 text-muted">从 HTTP 基础、代理配置开始，学习使用 Burp Suite/ZAP 抓包。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-2-circle-fill text-warning me-2"></i>基础攻击</h6>
+                    <p class="ms-4 text-muted">学习 SQL 注入、XSS、CSRF 等常见 Web 漏洞的原理和利用。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-3-circle-fill text-danger me-2"></i>进阶攻击</h6>
+                    <p class="ms-4 text-muted">挑战访问控制绕过、加密缺陷、反序列化等高级漏洞。</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-4-circle-fill text-info me-2"></i>防御实践</h6>
+                    <p class="ms-4 text-muted">学习安全编码规范、输入验证、输出编码等防御手段。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 环境信息 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-server me-1"></i> 环境信息
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr><td><strong>版本：</strong></td><td>WebGoat 8.x</td></tr>
+                        <tr><td><strong>技术栈：</strong></td><td>Java + Spring Boot</td></tr>
+                        <tr><td><strong>运行方式：</strong></td><td>Docker / JAR 包</td></tr>
+                        <tr><td><strong>默认端口：</strong></td><td>8080 (WebGoat) + 9090 (WebWolf)</td></tr>
+                        <tr><td><strong>辅助工具：</strong></td><td>WebWolf（内建攻击辅助工具）</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全提示 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> 安全提示
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>WebGoat 自带课程提示和解决方案</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>推荐配合 Burp Suite / ZAP 学习</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>WebWolf 可辅助完成部分课程</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>课程技术不可用于未授权目标</li>
+                    <li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>遵守法律法规和道德规范</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

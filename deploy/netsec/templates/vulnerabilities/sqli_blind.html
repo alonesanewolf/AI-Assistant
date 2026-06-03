@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - SQL盲注{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-syringe-fill text-success me-2"></i>SQL盲注</h2>
+        <p class="text-muted mb-0">Blind SQL Injection - 通过条件判断推断信息</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('vuln_sqli_blind') }}" id="vulnForm">
+                    <div class="mb-3">
+                        <label class="form-label">用户ID (盲注测试)</label>
+                        <input type="text" name="user_id" class="form-control" placeholder="输入用户ID" value="{{ request.form.user_id if request.method == 'POST' else '' }}">
+                        <small class="text-muted">提示: 使用条件判断来推断数据库信息</small>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-search me-1"></i>提交</button>
+                </form>
+
+                {% if result %}
+                <div class="alert alert-success mt-3"><i class="bi bi-check-circle-fill me-1"></i><strong>用户存在：</strong> {{ result }}</div>
+                {% endif %}
+                {% if not_found %}
+                <div class="alert alert-warning mt-3"><i class="bi bi-exclamation-circle-fill me-1"></i><strong>用户不存在</strong></div>
+                {% endif %}
+                {% if error %}
+                <div class="alert alert-danger mt-3"><i class="bi bi-x-circle-fill me-1"></i>{{ error }}</div>
+                {% endif %}
+
+                <div class="card bg-light mt-3">
+                    <div class="card-body">
+                        <h6>盲注Payload示例:</h6>
+                        <ul>
+                            <li><code>1 AND 1=1</code> — 返回真（用户存在）</li>
+                            <li><code>1 AND 1=2</code> — 返回假（用户不存在）</li>
+                            <li><code>1 AND (SELECT COUNT(*) FROM users) > 0</code> — 检查表是否存在</li>
+                            <li><code>1 AND LENGTH((SELECT username FROM users LIMIT 1)) = 5</code> — 猜解长度</li>
+                            <li><code>1 AND SLEEP(3)</code> — 基于时间盲注</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>SQL盲注中，攻击者无法直接看到数据库响应，需通过条件判断推断信息。</p>
+                <h6>利用方法</h6>
+                <ul><li>基于布尔的盲注</li><li>基于时间的盲注</li><li>基于错误的盲注</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">通过页面响应差异（存在/不存在）判断条件真假</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>使用参数化查询</li><li>输入验证和过滤</li><li>统一的错误页面</li><li>禁用详细的SQL错误信息</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+document.getElementById('vulnForm').addEventListener('submit', function() {
+    setTimeout(function(){ checkVulnPass('sqli_blind'); }, 1500);
+});
+</script>
+{% endblock %}

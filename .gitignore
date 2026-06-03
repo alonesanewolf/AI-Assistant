@@ -33,3 +33,20 @@ screenshot_*.jpg
 
 # 临时文件
 $null
+
+# Tomcat 整个目录（体积大，不需要上传到服务器）
+server/tomcat/
+
+# 临时目录
+try-three/
+20260522102228/
+
+# 部署日志
+/var/
+*.tar
+
+# 个人文件
+*简历*.docx
+*简历*.pdf
+*resume*.docx
+*resume*.pdf

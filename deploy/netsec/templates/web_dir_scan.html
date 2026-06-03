@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Web 目录扫描{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+    <h2 class="mb-1"><i class="bi bi-folder2-open me-2"></i>Web 目录扫描</h2>
+    <p class="text-muted mb-0">
+        通过字典对 Web 站点目录和文件路径进行探测，发现敏感路径和隐藏资源。
+    </p>
+</div>
+
+<div class="alert alert-warning">
+    <strong>安全提示：</strong>
+    请只对授权的测试目标进行目录扫描。
+</div>
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-gear me-1"></i> 扫描参数
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('web_dir_scan_page') }}">
+                    <div class="mb-3">
+                        <label class="form-label">目标 URL</label>
+                        <input type="text" class="form-control" name="url"
+                               placeholder="例如：http://example.com" required>
+                        <div class="form-text">需包含协议头</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">超时时间（秒）</label>
+                        <input type="number" class="form-control" name="timeout"
+                               value="3" min="1" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">线程数</label>
+                        <input type="number" class="form-control" name="workers"
+                               value="20" min="1" max="100">
+                        <div class="form-text">建议 10~50，过大可能触发目标限制</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-search me-1"></i>开始扫描
+                        </button>
+                        <a href="{{ url_for('range_page') }}" class="btn btn-secondary">返回</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-header"><i class="bi bi-list-check me-1"></i> 内置字典</div>
+            <div class="card-body">
+                <p class="small text-muted mb-1">默认扫描以下路径：</p>
+                <code>admin, login, index.php, backup, db, config, .git, robots.txt, wp-admin</code>
+            </div>
+        </div>
+    </div>
+
+    {% if results is not none %}
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header {% if results %}bg-warning text-dark{% else %}bg-secondary text-white{% endif %}">
+                <i class="bi bi-folder2-open me-1"></i> 扫描结果
+            </div>
+            <div class="card-body">
+                {% if results %}
+                <p>共发现 <strong>{{ results|length }}</strong> 个有效路径：</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>路径</th>
+                                <th>状态码</th>
+                                <th>大小</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in results %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><code>/{{ r.path }}</code></td>
+                                <td>
+                                    {% if r.code == 200 %}
+                                    <span class="badge bg-success">{{ r.code }}</span>
+                                    {% elif r.code == 403 %}
+                                    <span class="badge bg-warning text-dark">{{ r.code }}</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-dark">{{ r.code }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ r.size }} bytes</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i> 未发现有效路径。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3">
+            <strong>错误：</strong>{{ error }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

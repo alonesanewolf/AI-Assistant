@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - JavaScript漏洞{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-filetype-js text-secondary me-2"></i>JavaScript漏洞</h2>
+        <p class="text-muted mb-0">JavaScript Vulnerabilities - 前端代码存在安全缺陷</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white"><i class="bi bi-terminal me-1"></i> 漏洞演示 - Token生成</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input type="text" id="username" class="form-control" placeholder="输入用户名" value="admin">
+                </div>
+
+                <button class="btn btn-secondary mb-3" onclick="generateToken(); checkVulnPass('javascript_vuln');">
+                    <i class="bi bi-key-fill me-1"></i>生成Token
+                </button>
+
+                <div class="mt-3">
+                    <h6>生成的Token:</h6>
+                    <pre id="tokenOutput" class="bg-dark text-success p-3 rounded">点击按钮生成Token</pre>
+                </div>
+
+                {% if url_token %}
+                <div class="mt-3">
+                    <h6>URL中的Token:</h6>
+                    <code>{{ url_token }}</code>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> 漏洞代码分析</div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded border"><code>// 漏洞1：Token由用户名和固定盐值生成
+var fixedSalt = "SaltForToken_v1";  // 硬编码盐值
+
+function generateToken() {
+    var username = document.getElementById("username").value;
+    var token = md5(username + fixedSalt);  // 可预测
+    return username + ":" + token;
+}
+
+// 漏洞2：客户端验证可被绕过
+function verifyToken(token) {
+    var parts = token.split(":");
+    if (parts.length === 2) return true;  // 弱验证
+    return false;
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white"><i class="bi bi-bullseye me-1"></i> 测试步骤</div>
+            <div class="card-body">
+                <ol>
+                    <li>分析JavaScript代码逻辑</li>
+                    <li>找出Token生成算法（用户名 + 固定盐值）</li>
+                    <li>使用相同算法为其他用户生成Token</li>
+                    <li>观察：盐值硬编码在代码中，任何人都能看到</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>前端JavaScript代码中可能存在多种安全漏洞，如敏感信息暴露、客户端验证、弱加密等。</p>
+                <h6>常见问题</h6>
+                <ul><li>敏感信息硬编码</li><li>客户端验证可绕过</li><li>弱加密算法</li><li>Token在客户端生成</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">查看页面源码，分析JS代码逻辑</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>不在前端存储敏感信息</li><li>服务端生成Token</li><li>服务端验证</li><li>使用强加密算法</li><li>混淆压缩JavaScript代码</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function md5(string) {
+    // 演示用简化MD5（实际应为真实哈希）
+    var hash = "demo_hash_" + string.split("").reverse().join("");
+    return hash;
+}
+
+function generateToken() {
+    var username = document.getElementById("username").value;
+    var fixedSalt = "SaltForToken_v1";
+    var token = md5(username + fixedSalt);
+    document.getElementById("tokenOutput").textContent = username + ":" + token;
+}
+</script>
+{% endblock %}

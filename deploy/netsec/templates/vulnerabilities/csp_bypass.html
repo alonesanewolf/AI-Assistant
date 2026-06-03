@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}漏洞练习 - CSP绕过{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-shield-slash text-secondary me-2"></i>CSP绕过</h2>
+        <p class="text-muted mb-0">CSP Bypass - 内容安全策略配置不当可被绕过</p>
+    </div>
+    <div>
+        <span class="badge badge-low">Low</span>
+        <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white"><i class="bi bi-terminal me-1"></i> 漏洞演示</div>
+            <div class="card-body">
+                <div class="alert alert-secondary">
+                    <strong>当前页面CSP策略：</strong>
+                    <pre class="bg-dark text-light p-2 rounded mt-2 mb-0"><code>{{ csp_policy if csp_policy else "未设置" }}</code></pre>
+                </div>
+
+                <div class="mb-3 mt-4">
+                    <label class="form-label">输入评论内容</label>
+                    <textarea id="cspInput" class="form-control" rows="3" placeholder="输入评论 (尝试XSS绕过CSP)"></textarea>
+                    <button class="btn btn-secondary mt-2" onclick="processInput(); checkVulnPass('csp_bypass');"><i class="bi bi-send me-1"></i>提交</button>
+                </div>
+
+                <div id="output" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-bullseye me-1"></i> CSP绕过测试</div>
+            <div class="card-body">
+                <p>尝试以下Payload绕过CSP:</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="testCSP('<script>alert(1)</script>')">Script标签</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="testCSP('<img src=x onerror=alert(1)>')">Img事件</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="testCSP('<svg onload=alert(1)>')">SVG事件</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="testCSP('<body onload=alert(1)>')">Body事件</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="testCSP('<input onfocus=alert(1) autofocus>')">Input焦点</button>
+                </div>
+                <div id="cspTestResult" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> CSP分析</div>
+            <div class="card-body">
+                <p>当前CSP策略中 <code>'unsafe-inline'</code> 和 <code>'unsafe-eval'</code> 允许执行内联脚本，导致CSP形同虚设。</p>
+                <ul>
+                    <li><code>script-src 'unsafe-inline'</code> — 允许内联脚本</li>
+                    <li><code>script-src 'unsafe-eval'</code> — 允许eval等动态代码执行</li>
+                    <li>安全的CSP应使用 <code>nonce-</code> 或 <code>strict-dynamic</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><i class="bi bi-info-circle me-1"></i> 漏洞说明</div>
+            <div class="card-body">
+                <h6>漏洞原理</h6>
+                <p>内容安全策略(CSP)用于限制网页可加载的资源。配置不当的CSP可以被绕过。</p>
+                <h6>常见绕过方法</h6>
+                <ul><li><code>unsafe-inline</code></li><li><code>unsafe-eval</code></li><li>允许的CDN被入侵</li><li>JSONP端点滥用</li><li><code>data:</code> URI</li></ul>
+                <h6>解题提示</h6>
+                <p class="text-muted">利用CSP中unsafe-inline允许内联脚本</p>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>避免使用unsafe-inline</li><li>使用nonce或hash</li><li>限制可信来源</li><li>禁用unsafe-eval</li><li>定期审计CSP配置</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function processInput() {
+    var input = document.getElementById('cspInput').value;
+    var output = document.getElementById('output');
+    output.innerHTML = '<h6>评论预览:</h6><div class="border p-3 rounded">' + input + '</div>';
+}
+
+function testCSP(payload) {
+    var result = document.getElementById('cspTestResult');
+    result.innerHTML = '<h6>测试结果:</h6><div class="border p-3 rounded">' + payload + '</div>';
+    try {
+        var container = document.createElement('div');
+        container.innerHTML = payload;
+        document.body.appendChild(container);
+        result.innerHTML += '<div class="alert alert-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i>Payload已插入到DOM</div>';
+    } catch(e) {
+        result.innerHTML += '<div class="alert alert-info mt-2">执行出错: ' + e.message + '</div>';
+    }
+    checkVulnPass('csp_bypass');
+}
+</script>
+{% endblock %}

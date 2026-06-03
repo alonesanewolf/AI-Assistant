@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业安全平台 - 安全登录</title>
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --line: #d9e2ef;
+            --text-1: #0f172a;
+            --text-2: #64748b;
+            --primary: #0f4c81;
+            --primary-hover: #0b3e69;
+            --error: #dc2626;
+            --success: #059669;
+            --card: #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text-1);
+            background:
+                radial-gradient(1100px 450px at 0% -10%, rgba(14, 116, 144, .10), transparent 55%),
+                radial-gradient(900px 450px at 100% 110%, rgba(15, 76, 129, .08), transparent 55%),
+                var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .layout {
+            width: min(1080px, 100%);
+            min-height: 680px;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1.05fr .95fr;
+            background: var(--card);
+            box-shadow: 0 20px 48px rgba(15, 23, 42, .10);
+        }
+
+        .hero {
+            position: relative;
+            padding: 54px 56px;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, .60), rgba(255, 255, 255, .82)),
+                url("{{ url_for('static', filename='1.jpg') }}") center/cover no-repeat;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, .64), rgba(241, 245, 249, .88));
+        }
+
+        .hero > * { position: relative; z-index: 1; }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            color: #f8fafc;
+            background: linear-gradient(135deg, #0f4c81, #3b82b5);
+            box-shadow: 0 8px 18px rgba(15, 76, 129, .24);
+        }
+
+        .brand strong { font-size: 18px; letter-spacing: .3px; }
+        .brand span { color: #475569; font-size: 12px; }
+
+        .headline h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(30px, 3.2vw, 40px);
+            line-height: 1.2;
+            color: #0f172a;
+        }
+
+        .headline p {
+            margin: 0;
+            color: #334155;
+            line-height: 1.8;
+            max-width: 520px;
+        }
+
+        .stats {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stats div {
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #dbe4f0;
+            background: rgba(255, 255, 255, .74);
+        }
+
+        .stats b { display: block; font-size: 18px; margin-bottom: 3px; color: #0f4c81; }
+        .stats small { color: #475569; font-size: 12px; }
+
+        .panel {
+            padding: 46px 42px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #ffffff;
+        }
+
+        .panel h2 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: .3px;
+            color: #0f172a;
+        }
+
+        .sub {
+            margin: 10px 0 24px;
+            color: var(--text-2);
+            font-size: 14px;
+        }
+
+        .alert {
+            border-radius: 12px;
+            padding: 11px 13px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            border: 1px solid transparent;
+        }
+
+        .alert.error {
+            color: #991b1b;
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+
+        .alert.success {
+            color: #065f46;
+            border-color: #a7f3d0;
+            background: #ecfdf5;
+        }
+
+        .field { margin-bottom: 14px; }
+
+        .field label {
+            display: block;
+            margin-bottom: 7px;
+            color: #334155;
+            font-size: 13px;
+        }
+
+        .input-wrap {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #f8fafc;
+            transition: border-color .2s, box-shadow .2s, background .2s;
+        }
+
+        .input-wrap:focus-within {
+            border-color: #0f4c81;
+            box-shadow: 0 0 0 3px rgba(15, 76, 129, .14);
+            background: #ffffff;
+        }
+
+        .input-wrap input {
+            width: 100%;
+            border: 0;
+            outline: 0;
+            color: #0f172a;
+            font-size: 14px;
+            background: transparent;
+            padding: 12px 13px;
+        }
+
+        .eye {
+            border: 0;
+            background: transparent;
+            color: #0f4c81;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0 12px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0 20px;
+            font-size: 13px;
+            color: var(--text-2);
+        }
+
+        .row a { color: #0f4c81; text-decoration: none; }
+        .row a:hover { text-decoration: underline; }
+
+        .submit {
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: .2px;
+            cursor: pointer;
+            background: linear-gradient(90deg, var(--primary), #1f6aa1);
+            transition: transform .08s, background .2s;
+        }
+
+        .submit:hover { background: linear-gradient(90deg, var(--primary-hover), #165784); }
+        .submit:active { transform: translateY(1px); }
+        .submit:disabled { opacity: .6; cursor: not-allowed; }
+
+        .sso {
+            width: 100%;
+            margin-top: 10px;
+            border: 1px solid #d6e0ee;
+            color: #334155;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 11px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .caps {
+            display: none;
+            margin-top: 8px;
+            color: #92400e;
+            font-size: 12px;
+        }
+
+        .captcha-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .captcha-code {
+            min-height: 46px;
+            border: 1px dashed #bcd0e7;
+            border-radius: 12px;
+            background: #f8fbff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 5px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f4c81;
+            user-select: none;
+        }
+
+        .refresh {
+            border: 1px solid #d6e0ee;
+            border-radius: 12px;
+            background: #f8fafc;
+            color: #334155;
+            padding: 0 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .hint {
+            margin-top: 6px;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .foot {
+            margin-top: 18px;
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.7;
+        }
+
+        .foot a {
+            color: #0f4c81;
+            text-decoration: none;
+        }
+
+        .foot a:hover { text-decoration: underline; }
+
+        @media (max-width: 950px) {
+            .layout { grid-template-columns: 1fr; min-height: auto; }
+            .hero { min-height: 280px; border-right: 0; border-bottom: 1px solid #e2e8f0; }
+            .panel { padding: 34px 24px; }
+            .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 560px) {
+            .hero { padding: 28px 22px; }
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <section class="hero" aria-label="平台信息">
+        <div class="brand">
+            <div class="logo">NS</div>
+            <div>
+                <strong>Network Security</strong><br>
+                <span>Enterprise Security Console</span>
+            </div>
+        </div>
+
+        <div class="headline">
+            <h1>统一安全运营入口</h1>
+            <p>连接资产扫描、漏洞治理与风险闭环，帮助企业在同一平台完成监测、响应与审计，满足业务连续性与合规要求。</p>
+            <div class="stats">
+                <div><b>99.99%</b><small>服务可用性</small></div>
+                <div><b>24x7</b><small>风险监测</small></div>
+                <div><b>ISO 27001</b><small>安全标准对齐</small></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>登录账户</h2>
+        <p class="sub">请输入企业账号信息以访问控制台</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% if locked %}
+        <div class="alert error">登录已临时锁定，请 {{ remaining_minutes }} 分钟后重试。</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('login') }}" id="loginForm" novalidate>
+            <div class="field">
+                <label for="username">用户名 / 邮箱</label>
+                <div class="input-wrap">
+                    <input id="username" name="username" type="text" placeholder="请输入用户名" required autocomplete="username" maxlength="64">
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="password">密码</label>
+                <div class="input-wrap">
+                    <input id="password" name="password" type="password" placeholder="请输入密码" required autocomplete="current-password" maxlength="128">
+                    <button class="eye" type="button" id="togglePwd">显示</button>
+                </div>
+                <div class="caps" id="capsTip">已开启 Caps Lock，注意大小写。</div>
+            </div>
+
+            <div class="field">
+                <label for="captcha">验证码</label>
+                <div class="captcha-row">
+                    <div class="captcha-code">{{ captcha_code }}</div>
+                    <button class="refresh" type="button" id="refreshCaptcha">换一张</button>
+                </div>
+                <div class="input-wrap" style="margin-top: 8px;">
+                    <input id="captcha" name="captcha" type="text" placeholder="请输入验证码" required maxlength="4" autocomplete="off">
+                </div>
+                <div class="hint">请输入上方验证码（不区分大小写）。</div>
+            </div>
+
+            <div class="row">
+                <label><input type="checkbox" name="remember"> 记住我（8小时）</label>
+                <a href="{{ url_for('register') }}">注册账户</a>
+            </div>
+
+            <button class="submit" type="submit" id="submitBtn" {% if locked %}disabled{% endif %}>安全登录</button>
+            <button class="sso" type="button" disabled>企业 SSO（即将上线）</button>
+        </form>
+
+        <div class="foot">
+            登录即表示你同意平台
+            <a href="javascript:void(0)">服务条款</a>
+            与
+            <a href="javascript:void(0)">隐私政策</a>。
+        </div>
+    </section>
+</div>
+
+<script>
+    const pwdInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePwd');
+    const capsTip = document.getElementById('capsTip');
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const refreshCaptchaBtn = document.getElementById('refreshCaptcha');
+    const captchaInput = document.getElementById('captcha');
+
+    toggleBtn.addEventListener('click', () => {
+        const show = pwdInput.type === 'password';
+        pwdInput.type = show ? 'text' : 'password';
+        toggleBtn.textContent = show ? '隐藏' : '显示';
+        pwdInput.focus();
+    });
+
+    pwdInput.addEventListener('keyup', (e) => {
+        if (typeof e.getModifierState === 'function' && e.getModifierState('CapsLock')) {
+            capsTip.style.display = 'block';
+        } else {
+            capsTip.style.display = 'none';
+        }
+    });
+
+    captchaInput.addEventListener('input', () => {
+        captchaInput.value = captchaInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    });
+
+    refreshCaptchaBtn.addEventListener('click', () => {
+        window.location.href = '{{ url_for('login') }}';
+    });
+
+    form.addEventListener('submit', () => {
+        submitBtn.textContent = '登录中...';
+        submitBtn.disabled = true;
+    });
+</script>
+</body>
+</html>
