@@ -159,7 +159,7 @@ tail -f /var/log/nginx/ai_assistant_access.log  # Nginx 访问日志
 
 ## 网络安全助手
 
-- 默认管理员: `admin` / `your_password`（可通过环境变量 DEFAULT_ADMIN_PASSWORD 设置）
+- 默认管理员: `admin` / `Admin@123456`
 - 访问: `http://你的服务器IP/netsec/`
 - 首次访问自动初始化 MySQL 数据库
 - 包含 14 道 DVWA 风格漏洞练习题

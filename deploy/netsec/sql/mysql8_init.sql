@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(64) NOT NULL UNIQUE,
     display_name VARCHAR(64) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    password_salt VARCHAR(64) NOT NULL DEFAULT '',
+    role_key VARCHAR(32) NOT NULL DEFAULT 'user' COMMENT '角色标识: admin/user/readonly',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    last_login_at DATETIME NULL COMMENT '最后登录时间',
+    last_login_ip VARCHAR(45) NULL COMMENT '最后登录IP',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -67,8 +71,8 @@ CREATE TABLE IF NOT EXISTS port_scan_results (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 初始化默认管理员账号（仅当 admin 不存在时插入）
-INSERT INTO users (username, display_name, password_hash, is_active)
-SELECT 'admin', '系统管理员', '{ADMIN_PASSWORD_HASH}', 1
+INSERT INTO users (username, display_name, password_hash, password_salt, role_key, is_active)
+SELECT 'admin', '系统管理员', '{ADMIN_PASSWORD_HASH}', '{ADMIN_SALT}', 'admin', 1
 FROM DUAL
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE username = 'admin'
@@ -188,3 +192,35 @@ INSERT IGNORE INTO vulnerabilities (vuln_id, name, category, difficulty, descrip
 -- 漏洞组4
 ('csp_bypass', 'CSP绕过', '客户端', 'low', '内容安全策略配置不当可被绕过', '寻找CSP配置的薄弱环节'),
 ('javascript_vuln', 'JavaScript漏洞', '客户端', 'low', '前端JavaScript代码存在安全缺陷', '分析前端JS代码逻辑');
+
+-- 登录历史表：记录用户登录/登出记录
+CREATE TABLE IF NOT EXISTS login_history (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL,
+    login_type TINYINT NOT NULL DEFAULT 1 COMMENT '1=登录 0=登出',
+    ip_address VARCHAR(45) NULL,
+    browser VARCHAR(64) NULL,
+    os VARCHAR(64) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_username(username),
+    INDEX idx_created_at(created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录历史表';
+
+-- 操作日志表：记录用户关键操作
+CREATE TABLE IF NOT EXISTS operation_log (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL,
+    operation_name VARCHAR(128) NOT NULL COMMENT '操作名称',
+    method VARCHAR(10) NULL COMMENT 'HTTP方法',
+    path VARCHAR(512) NULL COMMENT '请求路径',
+    params TEXT NULL COMMENT '请求参数',
+    result TINYINT NOT NULL DEFAULT 1 COMMENT '1=成功 0=失败',
+    response TEXT NULL COMMENT '响应信息',
+    execution_time INT NULL COMMENT '执行耗时(ms)',
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_username(username),
+    INDEX idx_operation_name(operation_name),
+    INDEX idx_created_at(created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';

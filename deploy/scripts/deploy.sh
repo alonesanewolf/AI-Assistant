@@ -211,7 +211,7 @@ AGENT_NAME=CloudServer
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
-MYSQL_PASSWORD=your_mysql_password
+MYSQL_PASSWORD=NetSec@2026!
 MYSQL_DB=netsec_platform
 
 # NetSec 配置
@@ -219,7 +219,7 @@ NETSEC_PORT=5100
 NETSEC_DEBUG=false
 NETSEC_APP_ROOT=/netsec
 NETSEC_HOST=0.0.0.0
-DEFAULT_ADMIN_PASSWORD=your_admin_password
+DEFAULT_ADMIN_PASSWORD=Admin@123456
 ENVEOF
     echo -e "  ${YELLOW}⚠${NC} 请编辑 ${INSTALL_DIR}/.env 填写 DEEPSEEK_API_KEY"
 else
@@ -345,7 +345,7 @@ if [ "${INSTALL_NETSEC}" = "true" ]; then
             systemctl start mysql
             systemctl enable mysql
             # 设置 root 密码（Ubuntu MySQL 默认用 auth_socket，改为密码认证）
-            mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD:-your_mysql_password}'; FLUSH PRIVILEGES;" 2>/dev/null || true
+            mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD:-NetSec@2026!}'; FLUSH PRIVILEGES;" 2>/dev/null || true
         else
             yum install -y https://dev.mysql.com/get/mysql80-community-release-el7-3.noarch.rpm > /dev/null 2>&1 || true
             pkg_install mysql-community-server
@@ -491,11 +491,13 @@ Environment="FLASK_SECRET_KEY=$(openssl rand -hex 24 2>/dev/null || echo 'change
 Environment="MYSQL_HOST=localhost"
 Environment="MYSQL_PORT=3306"
 Environment="MYSQL_USER=root"
-Environment="MYSQL_PASSWORD=${MYSQL_PASSWORD:-your_mysql_password}"
+Environment="MYSQL_PASSWORD=${MYSQL_PASSWORD:-123456}"
 Environment="MYSQL_DB=netsec_platform"
 Environment="NETSEC_PORT=5100"
 Environment="NETSEC_DEBUG=false"
 Environment="NETSEC_APP_ROOT=/netsec"
+Environment="DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-Admin@123456}"
+Environment="DEFAULT_RESET_PASSWORD=${DEFAULT_RESET_PASSWORD:-Reset@2026!}"
 ExecStart=/usr/bin/python3 ${NETSEC_DIR}/run.py
 Restart=always
 RestartSec=10

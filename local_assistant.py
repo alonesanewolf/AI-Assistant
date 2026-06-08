@@ -45,9 +45,12 @@ from config import (
 )
 
 # ==================== 配置 ====================
-HOST = "127.0.0.1"
-PORT = 8080
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = int(os.environ.get("PORT", "8080"))
 AGENT_NAME = os.environ.get("AGENT_NAME", os.environ.get("COMPUTERNAME", "我的电脑"))
+
+# URL 前缀（通过 Nginx 反向代理时使用，如 /ai）
+APP_PREFIX = os.environ.get("APP_PREFIX", "")
 
 # 云端 Brain 地址（保持串联）
 BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:5000")
@@ -304,6 +307,10 @@ LOCAL_UI_HTML = r"""<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>本地 AI 助手</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Socket.IO 路径前缀（适配 Nginx 反向代理）
+        const SOCKET_PATH = '{{ app_prefix }}' ? '{{ app_prefix }}/socket.io' : undefined;
+    </script>
     <style>
         :root {
             --bg: #0d1117;
@@ -674,7 +681,7 @@ LOCAL_UI_HTML = r"""<!DOCTYPE html>
     </div>
 
     <script>
-        const socket = io();
+        const socket = io({ path: SOCKET_PATH ? SOCKET_PATH : '/socket.io' });
         const sessionId = 'local_' + Date.now();
         let currentModel = '-';
         let currentSource = '-';
@@ -945,7 +952,7 @@ LOCAL_UI_HTML = r"""<!DOCTYPE html>
 @app.route("/")
 def index():
     """主界面"""
-    return render_template_string(LOCAL_UI_HTML)
+    return render_template_string(LOCAL_UI_HTML, app_prefix=APP_PREFIX)
 
 
 @app.route("/api/status")

@@ -411,6 +411,7 @@
                 </details>
             </li>
 
+            {% if role_key == 'admin' %}
             <li>
                 <details>
                     <summary>系统管理</summary>
@@ -418,9 +419,11 @@
                         <li><button class="tree-link" data-url="{{ url_for('admin_users') }}">用户管理</button></li>
                         <li><button class="tree-link" data-url="{{ url_for('admin_roles') }}">角色权限</button></li>
                         <li><button class="tree-link" data-url="{{ url_for('admin_logs') }}">日志审计</button></li>
+                        <li><button class="tree-link" data-url="{{ url_for('admin_challenges') }}">题目管理</button></li>
                     </ul>
                 </details>
             </li>
+            {% endif %}
 
         </ul>
     </aside>

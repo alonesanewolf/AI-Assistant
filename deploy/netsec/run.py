@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import os
 import random
+import hashlib
+import uuid
 import pymysql
 
 from flask import (
@@ -22,12 +24,37 @@ from flask import (
     Response,
 )
 
-from werkzeug.security import check_password_hash, generate_password_hash
-
 # 导入扫描核心类
 from NetSecAssistant import NetSecAssistant
 import network_scan
 import socket
+
+
+# =========================
+# 密码安全（PBKDF2-SHA512 + 随机盐，参考 authbase）
+# =========================
+
+def generate_salt(length=16):
+    """生成随机盐（16字节）"""
+    return os.urandom(length)
+
+
+def hash_password(password, salt):
+    """使用 PBKDF2-SHA512 算法加密密码，迭代 100,000 次"""
+    return hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt, 100000)
+
+
+def make_password_hash(password):
+    """生成密码哈希和盐（用于创建/更新用户）"""
+    salt = generate_salt()
+    pwd_hash = hash_password(password, salt).hex()
+    return pwd_hash, salt.hex()
+
+
+def verify_password(password, salt_hex, pwd_hash):
+    """验证密码（用于登录）"""
+    salt = bytes.fromhex(salt_hex)
+    return hash_password(password, salt).hex() == pwd_hash
 
 
 # =========================
@@ -142,15 +169,14 @@ def ensure_database_and_tables():
     if not os.path.exists(INIT_SQL_PATH):
         raise FileNotFoundError(f"数据库脚本不存在: {INIT_SQL_PATH}")
 
-    admin_password_hash = generate_password_hash(
-        os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123456")
-    )
-    escaped_admin_hash = admin_password_hash.replace("\\", "\\\\").replace("'", "\\'")
+    admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123456")
+    admin_pwd_hash, admin_salt = make_password_hash(admin_password)
 
     with open(INIT_SQL_PATH, "r", encoding="utf-8") as f:
         init_sql = f.read().format(
             DB_NAME=DB_NAME,
-            ADMIN_PASSWORD_HASH=escaped_admin_hash
+            ADMIN_PASSWORD_HASH=admin_pwd_hash,
+            ADMIN_SALT=admin_salt
         )
 
     statements = [stmt.strip() for stmt in init_sql.split(";") if stmt.strip()]
@@ -189,6 +215,83 @@ def login_required(view_func):
             return redirect(url_for("login"))
         return view_func(*args, **kwargs)
     return wrapper
+
+
+def admin_required(view_func):
+    """管理员权限装饰器"""
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if "user" not in session:
+            flash("请先登录后再访问。", "error")
+            return redirect(url_for("login"))
+        if session.get("role_key") != "admin":
+            flash("需要管理员权限才能访问此页面。", "error")
+            return redirect(url_for("index"))
+        return view_func(*args, **kwargs)
+    return wrapper
+
+
+# =========================
+# 审计日志辅助函数
+# =========================
+
+def record_login_history(username, login_type, ip_address):
+    """记录登录/登出历史"""
+    db = get_db_connection()
+    try:
+        user_agent = request.headers.get('User-Agent', '')
+        browser = 'Unknown'
+        os_name = 'Unknown'
+        if 'Chrome' in user_agent:
+            browser = 'Chrome'
+        elif 'Firefox' in user_agent:
+            browser = 'Firefox'
+        elif 'Safari' in user_agent:
+            browser = 'Safari'
+        elif 'Edge' in user_agent:
+            browser = 'Edge'
+        if 'Windows' in user_agent:
+            os_name = 'Windows'
+        elif 'Mac OS' in user_agent:
+            os_name = 'Mac OS'
+        elif 'Linux' in user_agent:
+            os_name = 'Linux'
+        elif 'Android' in user_agent:
+            os_name = 'Android'
+        elif 'iOS' in user_agent:
+            os_name = 'iOS'
+
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO login_history (username, login_type, ip_address, browser, os, user_agent) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (username, login_type, ip_address, browser, os_name, user_agent[:500])
+            )
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+
+def record_operation_log(username, operation_name, method=None, path=None,
+                         params=None, result=1, execution_time=None):
+    """记录操作日志"""
+    db = get_db_connection()
+    try:
+        import json as _json
+        params_str = _json.dumps(params, ensure_ascii=False, default=str) if params else None
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO operation_log (username, operation_name, method, path, params, result, execution_time, ip_address) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (username, operation_name, method, path, params_str, result, execution_time, get_client_ip())
+            )
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
 
 
 # =========================
@@ -368,6 +471,16 @@ def register():
         if len(password) < 8:
             flash("密码长度不能小于 8 位。", "error")
             return render_template("register.html")
+        # 密码强度校验
+        if not any(c.isupper() for c in password):
+            flash("密码必须包含至少一个大写字母。", "error")
+            return render_template("register.html")
+        if not any(c.islower() for c in password):
+            flash("密码必须包含至少一个小写字母。", "error")
+            return render_template("register.html")
+        if not any(c.isdigit() for c in password):
+            flash("密码必须包含至少一个数字。", "error")
+            return render_template("register.html")
         if password != confirm_password:
             flash("两次输入的密码不一致！", "error")
             return render_template("register.html")
@@ -379,15 +492,18 @@ def register():
                 if cur.fetchone():
                     flash("用户名已经存在，请更换后重试。", "error")
                     return render_template("register.html")
+                pwd_hash, pwd_salt = make_password_hash(password)
                 cur.execute(
-                    "INSERT INTO users (username, display_name, password_hash) VALUES (%s, %s, %s)",
-                    (username, display_name, generate_password_hash(password))
+                    "INSERT INTO users (username, display_name, password_hash, password_salt, role_key) "
+                    "VALUES (%s, %s, %s, %s, 'user')",
+                    (username, display_name, pwd_hash, pwd_salt)
                 )
             db.commit()
         finally:
             db.close()
 
         flash("注册成功，请登录。", "success")
+        record_operation_log(username, "用户注册", "POST", "/register", result=1)
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -430,26 +546,59 @@ def login():
         try:
             with db.cursor() as cur:
                 cur.execute(
-                    "SELECT id, username, display_name, password_hash, is_active FROM users WHERE username=%s LIMIT 1",
+                    "SELECT id, username, display_name, password_hash, password_salt, role_key, is_active "
+                    "FROM users WHERE username=%s LIMIT 1",
                     (username,)
                 )
                 user = cur.fetchone()
         finally:
             db.close()
 
-        if not user or not user.get("is_active") or not check_password_hash(user["password_hash"], password):
+        # 使用 PBKDF2-SHA512 验证密码
+        if not user or not user.get("is_active"):
             register_failed_attempt(ip)
             locked, remaining_minutes = is_locked(ip)
             flash("账号或者密码错误。", "error")
             return render_login_page(locked=locked, remaining_minutes=remaining_minutes)
 
+        # 兼容旧数据：如果没有 salt 字段，回退到 werkzeug
+        if user.get("password_salt"):
+            pwd_ok = verify_password(password, user["password_salt"], user["password_hash"])
+        else:
+            from werkzeug.security import check_password_hash
+            pwd_ok = check_password_hash(user["password_hash"], password)
+
+        if not pwd_ok:
+            register_failed_attempt(ip)
+            locked, remaining_minutes = is_locked(ip)
+            flash("账号或者密码错误。", "error")
+            record_operation_log(username, "登录失败", "POST", "/login", result=0)
+            return render_login_page(locked=locked, remaining_minutes=remaining_minutes)
+
+        # 登录成功
         clear_attempts(ip)
         session.pop("captcha_code", None)
         session.permanent = remember
         session["user_id"] = user["id"]
         session["user"] = user["username"]
         session["display_name"] = user["display_name"]
+        session["role_key"] = user.get("role_key", "user")
         session["login_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 更新最后登录信息
+        db2 = get_db_connection()
+        try:
+            with db2.cursor() as cur:
+                cur.execute(
+                    "UPDATE users SET last_login_at=NOW(), last_login_ip=%s WHERE id=%s",
+                    (ip, user["id"])
+                )
+            db2.commit()
+        finally:
+            db2.close()
+
+        record_login_history(username, 1, ip)
+        record_operation_log(username, "用户登录", "POST", "/login", result=1)
         return redirect(url_for("index"))
 
     return render_login_page(locked=locked, remaining_minutes=remaining_minutes)
@@ -466,6 +615,7 @@ def index():
         "index.html",
         display_name=session.get("display_name", "用户"),
         login_time=session.get("login_time", "-"),
+        role_key=session.get("role_key", "user"),
     )
 
 
@@ -1447,6 +1597,7 @@ def progress_page():
 
 @app.route("/admin/challenges")
 @login_required
+@admin_required
 def admin_challenges():
     db = get_db_connection()
     try:
@@ -1469,6 +1620,7 @@ def admin_challenges():
 
 @app.route("/admin/challenges/add", methods=["POST"])
 @login_required
+@admin_required
 def admin_challenges_add():
     """新增题目"""
     vuln_id = request.form.get("vuln_id", "").strip()
@@ -1507,6 +1659,7 @@ def admin_challenges_add():
 
 @app.route("/admin/challenges/edit", methods=["POST"])
 @login_required
+@admin_required
 def admin_challenges_edit():
     """编辑题目"""
     vuln_db_id = request.form.get("vuln_db_id", "").strip()
@@ -1539,6 +1692,7 @@ def admin_challenges_edit():
 
 @app.route("/admin/challenges/toggle", methods=["POST"])
 @login_required
+@admin_required
 def admin_challenges_toggle():
     """切换题目启用/禁用"""
     vuln_db_id = request.form.get("vuln_db_id", "").strip()
@@ -1565,6 +1719,7 @@ def admin_challenges_toggle():
 
 @app.route("/admin/challenges/delete", methods=["POST"])
 @login_required
+@admin_required
 def admin_challenges_delete():
     """删除题目"""
     vuln_db_id = request.form.get("vuln_db_id", "").strip()
@@ -1634,6 +1789,7 @@ def lab_tryhackme():
 
 @app.route("/admin/users")
 @login_required
+@admin_required
 def admin_users():
     search = request.args.get("search", "").strip()
     db = get_db_connection()
@@ -1653,11 +1809,15 @@ def admin_users():
             # 用户列表
             if search:
                 cur.execute(
-                    "SELECT * FROM users WHERE username LIKE %s OR display_name LIKE %s ORDER BY id",
+                    "SELECT id, username, display_name, role_key, is_active, last_login_at, last_login_ip, created_at "
+                    "FROM users WHERE username LIKE %s OR display_name LIKE %s ORDER BY id",
                     (f"%{search}%", f"%{search}%")
                 )
             else:
-                cur.execute("SELECT * FROM users ORDER BY id")
+                cur.execute(
+                    "SELECT id, username, display_name, role_key, is_active, last_login_at, last_login_ip, created_at "
+                    "FROM users ORDER BY id"
+                )
             users = cur.fetchall()
     finally:
         db.close()
@@ -1666,10 +1826,12 @@ def admin_users():
 
 @app.route("/admin/users/add", methods=["POST"])
 @login_required
+@admin_required
 def admin_user_add():
     username = request.form.get("username", "").strip()
     display_name = request.form.get("display_name", "").strip() or username
     password = request.form.get("password", "")
+    role_key = request.form.get("role_key", "user").strip()
 
     if not username or not password:
         flash("用户名和密码不能为空。", "error")
@@ -1688,15 +1850,19 @@ def admin_user_add():
             if cur.fetchone():
                 flash(f"用户名 {username} 已存在。", "error")
                 return redirect(url_for("admin_users"))
+            pwd_hash, pwd_salt = make_password_hash(password)
             cur.execute(
-                "INSERT INTO users (username, display_name, password_hash) VALUES (%s, %s, %s)",
-                (username, display_name, generate_password_hash(password))
+                "INSERT INTO users (username, display_name, password_hash, password_salt, role_key) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (username, display_name, pwd_hash, pwd_salt, role_key)
             )
         db.commit()
         flash(f"用户「{display_name}」创建成功！", "success")
+        record_operation_log(session.get("user"), f"创建用户: {username}", "POST", "/admin/users/add", result=1)
     except Exception as e:
         db.rollback()
         flash(f"创建失败: {str(e)}", "error")
+        record_operation_log(session.get("user"), f"创建用户失败: {username}", "POST", "/admin/users/add", result=0)
     finally:
         db.close()
     return redirect(url_for("admin_users"))
@@ -1704,9 +1870,11 @@ def admin_user_add():
 
 @app.route("/admin/users/edit", methods=["POST"])
 @login_required
+@admin_required
 def admin_user_edit():
     user_id = request.form.get("user_id", "").strip()
     display_name = request.form.get("display_name", "").strip()
+    role_key = request.form.get("role_key", "").strip()
 
     if not user_id or not display_name:
         flash("参数不完整。", "error")
@@ -1715,9 +1883,19 @@ def admin_user_edit():
     db = get_db_connection()
     try:
         with db.cursor() as cur:
-            cur.execute("UPDATE users SET display_name=%s WHERE id=%s", (display_name, user_id))
+            updates = ["display_name=%s"]
+            params = [display_name]
+            if role_key:
+                updates.append("role_key=%s")
+                params.append(role_key)
+            params.append(user_id)
+            cur.execute(
+                f"UPDATE users SET {', '.join(updates)} WHERE id=%s",
+                params
+            )
         db.commit()
         flash("用户信息更新成功！", "success")
+        record_operation_log(session.get("user"), f"编辑用户: {user_id}", "POST", "/admin/users/edit", result=1)
     except Exception as e:
         db.rollback()
         flash(f"更新失败: {str(e)}", "error")
@@ -1728,6 +1906,7 @@ def admin_user_edit():
 
 @app.route("/admin/users/toggle", methods=["POST"])
 @login_required
+@admin_required
 def admin_user_toggle():
     user_id = request.form.get("user_id", "").strip()
     is_active = int(request.form.get("is_active", 1))
@@ -1747,6 +1926,7 @@ def admin_user_toggle():
             cur.execute("UPDATE users SET is_active=%s WHERE id=%s", (is_active, user_id))
         db.commit()
         flash("用户状态已更新！", "success")
+        record_operation_log(session.get("user"), f"切换用户状态: {user_id}", "POST", "/admin/users/toggle", result=1)
     except Exception as e:
         db.rollback()
         flash(f"操作失败: {str(e)}", "error")
@@ -1757,9 +1937,10 @@ def admin_user_toggle():
 
 @app.route("/admin/users/reset_password", methods=["POST"])
 @login_required
+@admin_required
 def admin_user_reset_password():
     user_id = request.form.get("user_id", "").strip()
-    default_password = "Reset@123456"
+    default_password = os.getenv("DEFAULT_RESET_PASSWORD", "Reset@2026!")
 
     if not user_id:
         flash("参数不完整。", "error")
@@ -1768,12 +1949,14 @@ def admin_user_reset_password():
     db = get_db_connection()
     try:
         with db.cursor() as cur:
+            pwd_hash, pwd_salt = make_password_hash(default_password)
             cur.execute(
-                "UPDATE users SET password_hash=%s WHERE id=%s",
-                (generate_password_hash(default_password), user_id)
+                "UPDATE users SET password_hash=%s, password_salt=%s WHERE id=%s",
+                (pwd_hash, pwd_salt, user_id)
             )
         db.commit()
-        flash(f"密码已重置为 {default_password}，请通知用户尽快修改。", "success")
+        flash(f"密码已重置，请通知用户尽快修改。", "success")
+        record_operation_log(session.get("user"), f"重置用户密码: {user_id}", "POST", "/admin/users/reset_password", result=1)
     except Exception as e:
         db.rollback()
         flash(f"重置失败: {str(e)}", "error")
@@ -1784,6 +1967,7 @@ def admin_user_reset_password():
 
 @app.route("/admin/users/delete", methods=["POST"])
 @login_required
+@admin_required
 def admin_user_delete():
     user_id = request.form.get("user_id", "").strip()
 
@@ -1800,9 +1984,11 @@ def admin_user_delete():
                 flash("不能删除管理员账号！", "error")
                 return redirect(url_for("admin_users"))
             if user:
+                deleted_username = user['username']
                 cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
                 db.commit()
-                flash(f"用户「{user['username']}」已删除！", "success")
+                flash(f"用户「{deleted_username}」已删除！", "success")
+                record_operation_log(session.get("user"), f"删除用户: {deleted_username}", "POST", "/admin/users/delete", result=1)
             else:
                 flash("用户不存在。", "error")
     except Exception as e:
@@ -1815,21 +2001,24 @@ def admin_user_delete():
 
 @app.route("/admin/roles")
 @login_required
+@admin_required
 def admin_roles():
     db = get_db_connection()
     try:
         with db.cursor() as cur:
-            cur.execute("SELECT COUNT(*) as cnt FROM users WHERE username='admin'")
-            admin_count = cur.fetchone()['cnt']
-            cur.execute("SELECT COUNT(*) as cnt FROM users WHERE username!='admin'")
-            normal_count = cur.fetchone()['cnt']
+            cur.execute("SELECT role_key, COUNT(*) as cnt FROM users GROUP BY role_key")
+            role_stats = {row['role_key']: row['cnt'] for row in cur.fetchall()}
     finally:
         db.close()
-    return render_template("admin_roles.html", admin_count=admin_count, normal_count=normal_count)
+    return render_template("admin_roles.html",
+                           admin_count=role_stats.get('admin', 0),
+                           user_count=role_stats.get('user', 0),
+                           readonly_count=role_stats.get('readonly', 0))
 
 
 @app.route("/admin/logs")
 @login_required
+@admin_required
 def admin_logs():
     db = get_db_connection()
     try:
@@ -1846,6 +2035,23 @@ def admin_logs():
             # 登录失败记录
             cur.execute("SELECT * FROM login_attempts ORDER BY updated_at DESC LIMIT 50")
             login_attempts = cur.fetchall()
+
+            # 登录历史记录
+            try:
+                cur.execute("SELECT * FROM login_history ORDER BY created_at DESC LIMIT 50")
+                login_history = cur.fetchall()
+            except Exception:
+                login_history = []
+
+            # 操作日志
+            try:
+                cur.execute("SELECT COUNT(*) as total FROM operation_log")
+                op_total = cur.fetchone()['total']
+                cur.execute("SELECT * FROM operation_log ORDER BY created_at DESC LIMIT 100")
+                operation_logs = cur.fetchall()
+            except Exception:
+                op_total = 0
+                operation_logs = []
 
             # 扫描任务日志
             cur.execute("SELECT COUNT(*) as total FROM scan_tasks")
@@ -1866,6 +2072,9 @@ def admin_logs():
                            login_stats=login_stats,
                            scan_stats={'total': scan_total},
                            login_attempts=login_attempts,
+                           login_history=login_history,
+                           operation_logs=operation_logs,
+                           op_total=op_total,
                            scan_tasks=scan_tasks,
                            progress_records=progress_records,
                            now=now)
@@ -1873,6 +2082,7 @@ def admin_logs():
 
 @app.route("/admin/logs/clear_ip", methods=["POST"])
 @login_required
+@admin_required
 def admin_log_clear_ip():
     ip_address = request.form.get("ip_address", "").strip()
     if not ip_address:
@@ -2290,6 +2500,10 @@ def report_generate(task_id):
 
 @app.route("/logout", methods=["GET", "POST"])
 def logout():
+    username = session.get("user", "")
+    if username:
+        record_login_history(username, 0, get_client_ip())
+        record_operation_log(username, "用户登出", "POST", "/logout", result=1)
     session.clear()
     flash("已经安全退出系统。", "success")
     return redirect(url_for("login"))

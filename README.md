@@ -140,7 +140,7 @@ cd /opt/AI_Assistant/deploy/scripts
 
 ### 网络安全助手
 
-- 默认管理员: `admin` / `your_password`（可通过环境变量 DEFAULT_ADMIN_PASSWORD 设置）
+- 默认管理员: `admin` / `Admin@123456`
 - 访问: `http://你的服务器IP/netsec/`
 - 首次启动自动初始化数据库
 
