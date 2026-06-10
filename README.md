@@ -39,6 +39,7 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # 编辑 .env 填写你的 API Key
+# config.py 会自动读取 .env，bat 脚本通过 load_env.bat 加载
 ```
 
 ### 3. 启动
@@ -65,6 +66,8 @@ ollama pull qwen2:7b
 ```
 AI_Assistant/
 ├── local_assistant.py    # ★ AI 助手 Web UI
+├── config.py             # 统一配置（从 .env 读取）
+├── load_env.bat          # Windows 环境变量加载
 ├── actions.py            # 电脑操控动作集
 ├── model_router.py       # AI 模型智能路由
 ├── memory.py             # 记忆与对话管理

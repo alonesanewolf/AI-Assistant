@@ -1,0 +1,840 @@
+{% extends "base.html" %}
+{% block title %}会员升级 - NetSec Platform{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #6366f1;
+        --primary-dark: #3730a3;
+        --gold: #f59e0b;
+        --green: #10b981;
+        --cyan: #06b6d4;
+        --bg: #0f172a;
+        --card-bg: #1e293b;
+        --border: #334155;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+    }
+    .pricing-hero {
+        text-align: center;
+        padding: 60px 20px 40px;
+        background: linear-gradient(180deg, rgba(79,70,229,0.1) 0%, transparent 100%);
+    }
+    .pricing-hero h1 {
+        font-size: 42px;
+        font-weight: 800;
+        margin-bottom: 12px;
+        background: linear-gradient(135deg, var(--primary-light), var(--cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .pricing-hero p {
+        font-size: 18px;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .billing-toggle {
+        display: inline-flex;
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 4px;
+        margin: 30px 0;
+        border: 1px solid var(--border);
+    }
+    .billing-toggle button {
+        padding: 10px 24px;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all .2s;
+    }
+    .billing-toggle button.active {
+        background: var(--primary);
+        color: #fff;
+    }
+    .save-badge {
+        display: inline-block;
+        background: rgba(16,185,129,0.2);
+        color: var(--green);
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-left: 6px;
+    }
+    .pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+        gap: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 60px;
+    }
+    .plan-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 32px 28px;
+        position: relative;
+        transition: all .3s;
+        display: flex;
+        flex-direction: column;
+    }
+    .plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .plan-card.featured {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary), 0 20px 40px rgba(79,70,229,0.2);
+        transform: scale(1.03);
+    }
+    .plan-card.featured:hover {
+        transform: scale(1.03) translateY(-4px);
+    }
+    .plan-badge {
+        position: absolute;
+        top: -12px;
+        right: 20px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 14px;
+        border-radius: 20px;
+    }
+    .plan-badge.enterprise {
+        background: linear-gradient(135deg, var(--gold), #fbbf24);
+        color: #000;
+    }
+    .plan-icon {
+        font-size: 36px;
+        margin-bottom: 16px;
+    }
+    .plan-name {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .plan-desc {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    .plan-price {
+        margin-bottom: 24px;
+    }
+    .plan-price .currency {
+        font-size: 20px;
+        font-weight: 500;
+        vertical-align: top;
+        color: var(--text-muted);
+    }
+    .plan-price .amount {
+        font-size: 48px;
+        font-weight: 800;
+        line-height: 1;
+    }
+    .plan-price .period {
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+    .plan-price .original {
+        text-decoration: line-through;
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-left: 4px;
+    }
+    .plan-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px;
+        flex: 1;
+    }
+    .plan-features li {
+        padding: 8px 0;
+        font-size: 14px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .plan-features li .check {
+        color: var(--green);
+        font-weight: 700;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .plan-features li .cross {
+        color: #64748b;
+        flex-shrink: 0;
+    }
+    .btn-plan {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        background: transparent;
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        text-align: center;
+        text-decoration: none;
+    }
+    .btn-plan:hover {
+        background: rgba(255,255,255,0.05);
+    }
+    .btn-plan.primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        border-color: transparent;
+        color: #fff;
+    }
+    .btn-plan.primary:hover {
+        opacity: 0.9;
+    }
+    .btn-plan.gold {
+        background: linear-gradient(135deg, var(--gold), #fbbf24);
+        border-color: transparent;
+        color: #000;
+    }
+    .btn-plan.gold:hover {
+        opacity: 0.9;
+    }
+
+    /* 积分充值区 */
+    .credits-section {
+        max-width: 1200px;
+        margin: 0 auto 60px;
+        padding: 0 24px;
+    }
+    .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    .section-subtitle {
+        text-align: center;
+        color: var(--text-muted);
+        margin-bottom: 30px;
+        font-size: 15px;
+    }
+    .credits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+    .credit-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        text-align: center;
+        transition: all .2s;
+        position: relative;
+    }
+    .credit-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .credit-card .credit-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    .credit-card .credit-amount {
+        font-size: 32px;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+    .credit-card .credit-price {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--primary-light);
+        margin-bottom: 16px;
+    }
+    .credit-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: var(--green);
+        color: #fff;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 8px;
+    }
+    .btn-buy {
+        display: block;
+        padding: 10px;
+        border: 1px solid var(--primary);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--primary-light);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        text-decoration: none;
+    }
+    .btn-buy:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    /* 对比表 */
+    .compare-section {
+        max-width: 1000px;
+        margin: 0 auto 60px;
+        padding: 0 24px;
+    }
+    .compare-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .compare-table th, .compare-table td {
+        padding: 14px 16px;
+        text-align: center;
+        border-bottom: 1px solid var(--border);
+    }
+    .compare-table th:first-child, .compare-table td:first-child {
+        text-align: left;
+    }
+    .compare-table thead th {
+        background: var(--card-bg);
+        font-weight: 600;
+        color: var(--text);
+    }
+    .compare-table tbody tr:hover {
+        background: rgba(255,255,255,0.02);
+    }
+    .icon-yes { color: var(--green); font-weight: 700; }
+    .icon-no { color: #64748b; }
+
+    /* FAQ */
+    .faq-section {
+        max-width: 800px;
+        margin: 0 auto 80px;
+        padding: 0 24px;
+    }
+    .faq-item {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 12px;
+    }
+    .faq-item h4 {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .faq-item p {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    /* 模态框 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 480px;
+        width: 90%;
+    }
+    .modal-box h3 {
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+    .payment-methods {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .payment-method {
+        flex: 1;
+        padding: 16px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all .2s;
+        background: transparent;
+        color: var(--text);
+        font-size: 14px;
+    }
+    .payment-method:hover, .payment-method.selected {
+        border-color: var(--primary);
+        background: rgba(79,70,229,0.1);
+    }
+    .payment-method .icon { font-size: 28px; display:block; margin-bottom:6px; }
+    .btn-pay {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-pay:hover { opacity: 0.9; }
+    .btn-pay:disabled { opacity: 0.5; cursor: not-allowed; }
+    .close-btn {
+        float: right;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 24px;
+        cursor: pointer;
+    }
+    .order-summary {
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .order-summary .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 14px;
+    }
+    .order-summary .total {
+        border-top: 1px solid var(--border);
+        margin-top: 8px;
+        padding-top: 8px;
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--primary-light);
+    }
+    .coupon-input {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    .coupon-input input {
+        flex: 1;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 14px;
+        outline: none;
+    }
+    .coupon-input button {
+        padding: 10px 16px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .coupon-msg { font-size: 12px; margin-bottom: 10px; }
+    .coupon-msg.success { color: var(--green); }
+    .coupon-msg.error { color: #ef4444; }
+
+    .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity .3s;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: var(--green); color: #fff; }
+    .toast.error { background: #ef4444; color: #fff; }
+</style>
+
+<div class="pricing-hero">
+    <h1>选择适合你的方案</h1>
+    <p>从免费入门到企业级安全培训，灵活的定价满足不同阶段的学习和工作需求</p>
+    
+    <div class="billing-toggle">
+        <button class="active" onclick="switchBilling('monthly')">月付</button>
+        <button onclick="switchBilling('yearly')">年付 <span class="save-badge">省 45%</span></button>
+    </div>
+</div>
+
+<!-- 方案卡片 -->
+<div class="pricing-grid" id="plansGrid">
+    <!-- JS 动态渲染 -->
+</div>
+
+<!-- 积分充值 -->
+<div class="credits-section">
+    <div class="section-title">积分充值</div>
+    <div class="section-subtitle">API 调用和扫描服务按量消耗积分，灵活充值，按需使用</div>
+    <div class="credits-grid" id="creditsGrid">
+        <!-- JS 动态渲染 -->
+    </div>
+</div>
+
+<!-- 方案对比 -->
+<div class="compare-section">
+    <div class="section-title">详细对比</div>
+    <div class="section-subtitle">一目了然，找到最合适的方案</div>
+    <table class="compare-table">
+        <thead>
+            <tr>
+                <th>功能</th>
+                <th>免费版</th>
+                <th>Pro 月付</th>
+                <th>Pro 年付</th>
+                <th>企业版</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>漏洞练习靶场</td>
+                <td>5 个</td>
+                <td class="icon-yes">全部 (>15)</td>
+                <td class="icon-yes">全部 (>15)</td>
+                <td class="icon-yes">全部 + 定制</td>
+            </tr>
+            <tr>
+                <td>每日端口扫描</td>
+                <td>5 次</td>
+                <td>50 次</td>
+                <td>100 次</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>每日 API 调用</td>
+                <td>50 次</td>
+                <td>500 次</td>
+                <td>1000 次</td>
+                <td>无限制</td>
+            </tr>
+            <tr>
+                <td>AI 智能分析报告</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+                <td class="icon-yes">✓</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>报告导出 (PDF/HTML)</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>自定义扫描规则</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>专属 Lab 环境</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>团队管理 (50人)</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>私有化部署</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-no">-</td>
+                <td class="icon-yes">✓</td>
+            </tr>
+            <tr>
+                <td>专属技术支持</td>
+                <td>社区</td>
+                <td>优先响应</td>
+                <td>优先响应</td>
+                <td>7x24</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- FAQ -->
+<div class="faq-section">
+    <div class="section-title">常见问题</div>
+    <div class="section-subtitle">还有疑问？联系我们获取帮助</div>
+    <div class="faq-item">
+        <h4>Q: 如何升级会员？</h4>
+        <p>选择你想要的方案，点击"立即订阅"，完成支付后会员即时生效。从免费版升级后，剩余积分会保留。</p>
+    </div>
+    <div class="faq-item">
+        <h4>Q: 积分会过期吗？</h4>
+        <p>积分永不过期。每月还会根据会员等级自动赠送额外积分，Pro 月付每月送 1000 积分。</p>
+    </div>
+    <div class="faq-item">
+        <h4>Q: 可以随时取消订阅吗？</h4>
+        <p>可以。取消后当前周期的权益会保留到结束，不会立即失效。年付用户取消后可用到年底。</p>
+    </div>
+    <div class="faq-item">
+        <h4>Q: 支持哪些支付方式？</h4>
+        <p>目前支持微信支付和支付宝。企业版支持对公转账，请联系客服获取发票信息。</p>
+    </div>
+    <div class="faq-item">
+        <h4>Q: 有没有教育优惠？</h4>
+        <p>在校师生凭 .edu 邮箱认证可享 Pro 方案 5 折优惠。请联系客服申请。</p>
+    </div>
+</div>
+
+<!-- 支付模态框 -->
+<div class="modal-overlay" id="payModal">
+    <div class="modal-box">
+        <button class="close-btn" onclick="closePayModal()">&times;</button>
+        <h3 id="modalTitle">确认订单</h3>
+        <div class="order-summary" id="orderSummary"></div>
+        <div class="coupon-input">
+            <input type="text" id="couponCode" placeholder="输入优惠码">
+            <button onclick="applyCoupon()">验证</button>
+        </div>
+        <div class="coupon-msg" id="couponMsg"></div>
+        <div class="payment-methods">
+            <button class="payment-method selected" onclick="selectPayment('wechat', this)" id="pmWechat">
+                <span class="icon">💚</span>微信支付
+            </button>
+            <button class="payment-method" onclick="selectPayment('alipay', this)" id="pmAlipay">
+                <span class="icon">💙</span>支付宝
+            </button>
+        </div>
+        <button class="btn-pay" id="btnPay" onclick="confirmPay()">确认支付</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // 方案数据
+    const plans = {
+        free: { id:'free', name:'免费版', icon:'🚀', desc:'入门学习', price:0, originalPrice:0, features:['基础漏洞练习 (5个)','每日5次端口扫描','每日50次 API 调用','社区支持'], badge:'', featured:false, btnText:'当前方案', btnClass:'' },
+        pro_monthly: { id:'pro_monthly', name:'Pro 月付', icon:'⭐', desc:'专业安全工程师', price:29.90, originalPrice:29.90, features:['全部漏洞练习 (>15个)','每日50次端口扫描','每日500次 API 调用','AI 智能分析报告','扫描历史记录','优先客服支持'], badge:'推荐', featured:true, btnText:'立即订阅', btnClass:'primary' },
+        pro_yearly: { id:'pro_yearly', name:'Pro 年付', icon:'💎', desc:'深度安全研究者', price:199, originalPrice:358.80, features:['Pro 月付全部功能','每日100次端口扫描','每日1000次 API 调用','高级报告导出 (PDF/HTML)','自定义扫描规则','专属 Lab 环境'], badge:'超值', featured:false, btnText:'立即订阅', btnClass:'primary' },
+        enterprise: { id:'enterprise', name:'企业版', icon:'🏢', desc:'企业安全团队', price:999, originalPrice:999, features:['全部功能无限制','独立专属服务器','定制化漏洞靶场','团队管理 (最多50人)','API 接口集成','私有化部署支持','7x24 专属技术支持','培训课程与认证'], badge:'企业', featured:false, btnText:'联系我们', btnClass:'gold' }
+    };
+    const creditPkgs = [
+        { id:'credits_100', name:'100 积分', price:'¥10', amount:'100', icon:'🪙' },
+        { id:'credits_500', name:'500 积分', price:'¥39.9', amount:'500', icon:'💰', badge:'热销' },
+        { id:'credits_2000', name:'2000 积分', price:'¥129', amount:'2000', icon:'💵', badge:'超值' },
+        { id:'credits_5000', name:'5000 积分', price:'¥299', amount:'5000', icon:'💎' },
+    ];
+
+    let billingPeriod = 'monthly';
+    let currentOrder = null;
+    let selectedPayment = 'wechat';
+    let appliedCoupon = null;
+
+    function switchBilling(period) {
+        billingPeriod = period;
+        document.querySelectorAll('.billing-toggle button').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        renderPlans();
+    }
+
+    function renderPlans() {
+        const grid = document.getElementById('plansGrid');
+        const planList = billingPeriod === 'yearly' 
+            ? [plans.free, plans.pro_yearly, plans.enterprise]
+            : [plans.free, plans.pro_monthly, plans.enterprise];
+        
+        grid.innerHTML = planList.map(p => {
+            const price = billingPeriod === 'yearly' ? p.price : p.price;
+            const periodLabel = billingPeriod === 'yearly' && p.id !== 'free' ? '/年' : p.id === 'free' ? '' : '/月';
+            const origPrice = billingPeriod === 'yearly' && p.originalPrice > p.price ? p.originalPrice : 0;
+            return `
+            <div class="plan-card ${p.featured ? 'featured' : ''}">
+                ${p.badge ? `<span class="plan-badge ${p.id === 'enterprise' ? 'enterprise' : ''}">${p.badge}</span>` : ''}
+                <div class="plan-icon">${p.icon}</div>
+                <div class="plan-name">${p.name}</div>
+                <div class="plan-desc">${p.desc}</div>
+                <div class="plan-price">
+                    <span class="currency">¥</span>
+                    <span class="amount">${price}</span>
+                    <span class="period">${periodLabel}</span>
+                    ${origPrice > 0 ? `<span class="original">¥${origPrice}</span>` : ''}
+                </div>
+                <ul class="plan-features">
+                    ${p.features.map(f => `<li><span class="check">✓</span>${f}</li>`).join('')}
+                </ul>
+                <a href="javascript:void(0)" class="btn-plan ${p.btnClass}" 
+                   onclick="${p.id === 'free' ? '' : `openPayModal('${p.id}', ${price*100})`}"
+                   ${p.id === 'enterprise' ? 'onclick="showToast(\'请联系客服：support@netsec.cn\', \'success\')"' : ''}>
+                   ${p.id === 'enterprise' ? '联系我们' : p.id === 'free' ? '当前方案' : '立即订阅'}
+                </a>
+            </div>`;
+        }).join('');
+    }
+
+    function renderCredits() {
+        const grid = document.getElementById('creditsGrid');
+        grid.innerHTML = creditPkgs.map(p => `
+            <div class="credit-card">
+                ${p.badge ? `<span class="credit-badge">${p.badge}</span>` : ''}
+                <div class="credit-icon">${p.icon}</div>
+                <div class="credit-amount">${p.amount}</div>
+                <div class="credit-name" style="color:var(--text-muted);margin-bottom:4px;">积分</div>
+                <div class="credit-price">${p.price}</div>
+                <a href="javascript:void(0)" class="btn-buy" onclick="openPayModal('${p.id}', ${p.price.replace('¥','')*100})">立即充值</a>
+            </div>
+        `).join('');
+    }
+
+    function openPayModal(planId, amountCents) {
+        currentOrder = { planId, amountCents };
+        appliedCoupon = null;
+        document.getElementById('couponCode').value = '';
+        document.getElementById('couponMsg').textContent = '';
+        document.getElementById('couponMsg').className = 'coupon-msg';
+        
+        const plan = plans[planId] || creditPkgs.find(p => p.id === planId);
+        const name = plan ? (plan.name || plan.id) : planId;
+        document.getElementById('modalTitle').textContent = '确认订单 - ' + name;
+        
+        updateOrderSummary();
+        selectPaymentUI('wechat');
+        document.getElementById('payModal').classList.add('show');
+    }
+
+    function updateOrderSummary() {
+        const amount = appliedCoupon ? Math.max(0, currentOrder.amountCents - appliedCoupon.discount_cents) : currentOrder.amountCents;
+        let html = `
+            <div class="row"><span>商品</span><span>${currentOrder.planId}</span></div>
+            <div class="row"><span>原价</span><span>¥${(currentOrder.amountCents/100).toFixed(2)}</span></div>`;
+        if (appliedCoupon) {
+            html += `<div class="row" style="color:var(--green)"><span>优惠码</span><span>-¥${(appliedCoupon.discount_cents/100).toFixed(2)}</span></div>`;
+        }
+        html += `<div class="total row"><span>应付</span><span>¥${(amount/100).toFixed(2)}</span></div>`;
+        document.getElementById('orderSummary').innerHTML = html;
+    }
+
+    function applyCoupon() {
+        const code = document.getElementById('couponCode').value.trim();
+        if (!code) return;
+        
+        fetch('/api/payment/validate-coupon', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ code, plan_id: currentOrder.planId })
+        })
+        .then(r => r.json())
+        .then(d => {
+            const msg = document.getElementById('couponMsg');
+            if (d.valid) {
+                appliedCoupon = { code, discount_cents: d.discount_cents };
+                msg.textContent = d.message || '优惠码已应用';
+                msg.className = 'coupon-msg success';
+                updateOrderSummary();
+            } else {
+                appliedCoupon = null;
+                msg.textContent = d.message || '无效优惠码';
+                msg.className = 'coupon-msg error';
+                updateOrderSummary();
+            }
+        });
+    }
+
+    function selectPayment(method, el) {
+        selectedPayment = method;
+        selectPaymentUI(method);
+    }
+
+    function selectPaymentUI(method) {
+        document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+        const el = document.getElementById(method === 'wechat' ? 'pmWechat' : 'pmAlipay');
+        if (el) el.classList.add('selected');
+    }
+
+    function confirmPay() {
+        const btn = document.getElementById('btnPay');
+        btn.disabled = true;
+        btn.textContent = '处理中...';
+
+        fetch('/api/payment/create-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                plan_id: currentOrder.planId,
+                payment_method: selectedPayment,
+                coupon_code: appliedCoupon ? appliedCoupon.code : ''
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                // 模拟支付完成（实际应跳转支付页面）
+                return fetch('/api/payment/complete-order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ order_id: d.order_id, transaction_id: 'SIM' + Date.now() })
+                });
+            } else {
+                throw new Error(d.message || '创建订单失败');
+            }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                closePayModal();
+                showToast('支付成功！会员已激活 🎉', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                throw new Error(d.message || '支付失败');
+            }
+        })
+        .catch(e => {
+            showToast(e.message, 'error');
+            btn.disabled = false;
+            btn.textContent = '确认支付';
+        });
+    }
+
+    function closePayModal() {
+        document.getElementById('payModal').classList.remove('show');
+        document.getElementById('btnPay').disabled = false;
+        document.getElementById('btnPay').textContent = '确认支付';
+    }
+
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'toast ' + type + ' show';
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // 初始化
+    renderPlans();
+    renderCredits();
+</script>
+{% endblock %}

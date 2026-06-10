@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% block title %}AI 网络安全攻防 - 网络安全助手{% endblock %}
+{% block extra_head %}
+<style>
+    :root {
+        --chat-bg: #1e1e2e;
+        --msg-user: #2d6a4f;
+        --msg-ai: #313244;
+        --input-bg: #181825;
+        --accent: #89b4fa;
+        --danger: #f38ba8;
+        --warning: #f9e2af;
+        --success: #a6e3a1;
+    }
+    .attack-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 16px;
+        min-height: calc(100vh - 220px);
+    }
+    @media (max-width: 992px) {
+        .attack-layout { grid-template-columns: 1fr; }
+    }
+
+    /* 对话区 */
+    .chat-panel {
+        display: flex;
+        flex-direction: column;
+        background: var(--chat-bg);
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #313244;
+    }
+    .chat-header {
+        background: #11111b;
+        padding: 12px 16px;
+        border-bottom: 1px solid #313244;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .chat-header h5 {
+        margin: 0;
+        color: #cdd6f4;
+        font-size: 15px;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 55vh;
+    }
+    .chat-msg {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        line-height: 1.55;
+        font-size: 14px;
+        animation: msgSlide 0.25s ease;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    @keyframes msgSlide {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .chat-msg.user {
+        align-self: flex-end;
+        background: var(--msg-user);
+        color: #d8f3dc;
+        border-bottom-right-radius: 4px;
+    }
+    .chat-msg.ai {
+        align-self: flex-start;
+        background: var(--msg-ai);
+        color: #cdd6f4;
+        border-bottom-left-radius: 4px;
+    }
+    .chat-msg.system {
+        align-self: center;
+        background: rgba(137,180,250,0.1);
+        color: #89b4fa;
+        font-size: 12px;
+        padding: 6px 14px;
+        border-radius: 8px;
+    }
+    .chat-msg .op-tag {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .op-tag.scan { background: rgba(137,180,250,0.2); color: #89b4fa; }
+    .op-tag.attack { background: rgba(243,139,168,0.2); color: #f38ba8; }
+    .op-tag.cmd { background: rgba(249,226,175,0.2); color: #f9e2af; }
+    .op-tag:hover { filter: brightness(1.3); }
+
+    .chat-input-row {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        background: #11111b;
+        border-top: 1px solid #313244;
+    }
+    .chat-input-row input {
+        flex: 1;
+        background: var(--input-bg);
+        border: 1px solid #45475a;
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: #cdd6f4;
+        font-size: 14px;
+        outline: none;
+    }
+    .chat-input-row input:focus { border-color: #89b4fa; }
+    .chat-input-row button {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    .chat-input-row button:hover { opacity: 0.9; }
+    .chat-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 右侧面板 */
+    .side-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .side-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+    }
+    .side-card h6 {
+        font-weight: 700;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    .quick-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #f9fafb;
+        color: #374151;
+        font-size: 13px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .quick-btn:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: #2563eb;
+    }
+    .result-block {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 12px;
+        font-family: 'Courier New', monospace;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #166534;
+    }
+    .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        background: var(--msg-ai);
+        color: #a6adc8;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border-bottom-left-radius: 4px;
+        font-size: 13px;
+    }
+    .typing-indicator.active { display: block; }
+    .typing-indicator span {
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #a6adc8;
+        margin: 0 2px;
+        animation: typingBounce 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+    .model-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .model-deepseek { background: #dbeafe; color: #1d4ed8; }
+    .model-ollama { background: #fef3c7; color: #92400e; }
+    .model-fallback { background: #f3f4f6; color: #6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2><i class="bi bi-robot me-2"></i>AI 网络安全攻防</h2>
+        <p class="text-muted mb-0">
+            AI 驱动的自动化渗透测试。用自然语言描述目标，AI 自动规划攻击路径并执行操作。
+            <span class="badge bg-primary ms-2">DeepSeek + Ollama 双模型</span>
+        </p>
+    </div>
+    <div>
+        <span class="me-2 small text-muted">AI 模型:</span>
+        <span id="modelIndicator" class="badge bg-secondary">未连接</span>
+    </div>
+</div>
+
+<div class="attack-layout">
+    <!-- 左侧：AI 对话区 -->
+    <div class="chat-panel">
+        <div class="chat-header">
+            <h5><i class="bi bi-shield-shaded me-2"></i>AI 攻防对话</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-light me-1" onclick="clearChat()" title="清空对话">
+                    <i class="bi bi-eraser"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="exportChat()" title="导出对话">
+                    <i class="bi bi-download"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg ai">
+                <strong>AI 攻防助手</strong> 已就绪。<br><br>
+                我是你的 AI 渗透测试搭档。你可以：
+                <br>• 描述攻击目标，我会自动规划渗透路径
+                <br>• 让我对目标执行端口扫描、漏洞检测
+                <br>• 生成 SQL注入/XSS/命令注入 payload
+                <br>• 分析扫描结果并给出下一步建议
+                <br><br>
+                <em>示例：</em><br>
+                <code>"扫描 192.168.1.1 的端口"</code><br>
+                <code>"帮我分析 SQL 注入漏洞怎么利用"</code><br>
+                <code>"对 DVWA 靶场进行渗透测试"</code>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            AI 思考中<span></span><span></span><span></span>
+        </div>
+
+        <div class="chat-input-row">
+            <input type="text" id="chatInput"
+                   placeholder="描述攻击目标或问问题..."
+                   onkeydown="if(event.key==='Enter'&&!event.shiftKey) sendMessage()"
+                   autofocus>
+            <button id="sendBtn" onclick="sendMessage()">
+                <i class="bi bi-send-fill me-1"></i>发送
+            </button>
+        </div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="side-panel">
+        <!-- 快速操作 -->
+        <div class="side-card">
+            <h6><i class="bi bi-lightning-charge-fill me-1"></i>快速操作</h6>
+            <button class="quick-btn" onclick="quickAsk('扫描 127.0.0.1 的常用端口')">
+                <i class="bi bi-ethernet me-1"></i>扫描本地端口
+            </button>
+            <button class="quick-btn" onclick="quickAsk('SQL注入攻击怎么进行？请给出详细步骤')">
+                <i class="bi bi-database-fill-exclamation me-1"></i>SQL注入攻防
+            </button>
+            <button class="quick-btn" onclick="quickAsk('XSS跨站脚本攻击有哪些类型？怎么利用？')">
+                <i class="bi bi-code-slash me-1"></i>XSS 攻防
+            </button>
+            <button class="quick-btn" onclick="quickAsk('如何检测目标是否部署了WAF？')">
+                <i class="bi bi-shield-exclamation me-1"></i>WAF 检测
+            </button>
+            <button class="quick-btn" onclick="quickAsk('对 DVWA 靶场进行完整的渗透测试，从信息收集开始')">
+                <i class="bi bi-bug me-1"></i>DVWA 完整渗透
+            </button>
+            <button class="quick-btn" onclick="quickAsk('如何进行子域名枚举和信息收集？')">
+                <i class="bi bi-globe me-1"></i>信息收集
+            </button>
+        </div>
+
+        <!-- 目标信息 -->
+        <div class="side-card">
+            <h6><i class="bi bi-bullseye me-1"></i>目标设置</h6>
+            <div class="mb-2">
+                <label class="form-label small fw-bold">目标 IP/域名</label>
+                <input type="text" class="form-control form-control-sm" id="targetInput"
+                       placeholder="例: 192.168.1.1 或 example.com">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-bold">端口范围</label>
+                <input type="text" class="form-control form-control-sm" id="portInput"
+                       placeholder="例: 1-1024 或 80,443,8080" value="1-1024">
+            </div>
+            <button class="btn btn-sm btn-outline-primary w-100" onclick="quickScan()">
+                <i class="bi bi-search me-1"></i>快速扫描
+            </button>
+        </div>
+
+        <!-- 执行结果 -->
+        <div class="side-card">
+            <h6><i class="bi bi-terminal me-1"></i>操作结果</h6>
+            <div class="result-block" id="resultBlock">
+                <span class="text-muted">点击 AI 回复中的操作标签来执行</span>
+            </div>
+        </div>
+
+        <!-- 提示 -->
+        <div class="side-card" style="background:#fffbeb;border-color:#fde68a;">
+            <h6 class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>重要提示</h6>
+            <small class="text-muted">
+                所有攻击操作仅限在授权的靶场环境中进行。请勿对未授权的目标进行渗透测试。
+                <br><br>
+                <strong>推荐靶场:</strong>
+                <br>• DVWA 漏洞练习（平台内置）
+                <br>• Metasploitable2
+                <br>• Vulhub Docker 靶场
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+const sessionId = 'attack_' + Date.now();
+let isProcessing = false;
+
+// 发送消息
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message || isProcessing) return;
+
+    input.value = '';
+    isProcessing = true;
+    document.getElementById('sendBtn').disabled = true;
+
+    addMessage('user', message);
+    showTyping(true);
+
+    const target = document.getElementById('targetInput').value.trim();
+
+    try {
+        const resp = await fetch('{{ url_for("api_ai_attack_chat") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: message,
+                session_id: sessionId,
+                target: target,
+            })
+        });
+        const data = await resp.json();
+
+        showTyping(false);
+
+        if (data.success) {
+            // 显示模型信息
+            const modelBadge = document.getElementById('modelIndicator');
+            if (data.model === 'deepseek-chat') {
+                modelBadge.textContent = 'DeepSeek 云端';
+                modelBadge.className = 'badge model-deepseek';
+            } else if (data.model.includes('qwen') || data.model.includes('llama')) {
+                modelBadge.textContent = 'Ollama 本地';
+                modelBadge.className = 'badge model-ollama';
+            } else if (data.fallback) {
+                modelBadge.textContent = '本地分析';
+                modelBadge.className = 'badge model-fallback';
+            }
+
+            addMessage('ai', data.reply, data.operations || []);
+        } else {
+            addMessage('system', '错误: ' + (data.error || '未知错误'));
+        }
+    } catch (e) {
+        showTyping(false);
+        addMessage('system', '网络错误: ' + e.message);
+    }
+
+    isProcessing = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('chatInput').focus();
+}
+
+// 添加消息
+function addMessage(role, text, operations) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    div.textContent = text;
+
+    // 添加操作标签
+    if (operations && operations.length > 0) {
+        operations.forEach(op => {
+            const tag = document.createElement('span');
+            tag.className = 'op-tag ' + (op.type.startsWith('scan') ? 'scan' : op.type.startsWith('attack') ? 'attack' : 'cmd');
+            tag.textContent = '▶ ' + formatOpName(op.type) + ': ' + op.params;
+            tag.title = '点击执行此操作';
+            tag.onclick = function() { executeOperation(op.type, op.params); };
+            div.appendChild(document.createElement('br'));
+            div.appendChild(tag);
+        });
+    }
+
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// 执行操作
+async function executeOperation(opType, params) {
+    const resultBlock = document.getElementById('resultBlock');
+    resultBlock.innerHTML = '<span class="text-info">⏳ 执行中: ' + formatOpName(opType) + '...</span>';
+
+    try {
+        const resp = await fetch('{{ url_for("api_ai_attack_execute") }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: opType, params: params })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            resultBlock.innerHTML = '<strong>结果:</strong>\n' + escapeHtml(data.result);
+            addMessage('system', '操作完成: ' + formatOpName(opType) + '\n' + data.result.substring(0, 300));
+        } else {
+            resultBlock.innerHTML = '<span class="text-danger">错误: ' + escapeHtml(data.error) + '</span>';
+        }
+    } catch (e) {
+        resultBlock.innerHTML = '<span class="text-danger">网络错误: ' + e.message + '</span>';
+    }
+}
+
+// 快速提问
+function quickAsk(text) {
+    document.getElementById('chatInput').value = text;
+    sendMessage();
+}
+
+// 快速扫描
+function quickScan() {
+    const target = document.getElementById('targetInput').value.trim();
+    const ports = document.getElementById('portInput').value.trim();
+    if (!target) {
+        alert('请输入目标 IP 或域名');
+        return;
+    }
+    document.getElementById('chatInput').value = '对 ' + target + ' 进行端口扫描，端口范围 ' + ports;
+    sendMessage();
+}
+
+// 清空对话
+function clearChat() {
+    if (!confirm('确定要清空对话历史吗？')) return;
+    document.getElementById('chatMessages').innerHTML = '';
+    addMessage('ai', '对话已清空。我是你的 AI 渗透测试搭档，有什么可以帮助你的？');
+}
+
+// 导出对话
+function exportChat() {
+    const messages = document.getElementById('chatMessages');
+    const text = Array.from(messages.children)
+        .map(m => {
+            const role = m.classList.contains('user') ? '你' : m.classList.contains('ai') ? 'AI' : '系统';
+            return '[' + role + '] ' + m.textContent;
+        })
+        .join('\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai_attack_log_' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 工具函数
+function formatOpName(type) {
+    const map = {
+        'scan_port': '端口扫描', 'scan_dir': '目录扫描', 'scan_waf': 'WAF检测',
+        'scan_subdomain': '子域名枚举', 'scan_fingerprint': '指纹识别',
+        'scan_network': '网络扫描',
+        'attack_sqli': 'SQL注入', 'attack_xss': 'XSS攻击', 'attack_cmdi': '命令注入',
+        'cmd_run_command': '执行命令',
+    };
+    return map[type] || type;
+}
+
+function showTyping(show) {
+    const el = document.getElementById('typingIndicator');
+    if (show) {
+        el.classList.add('active');
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+    } else {
+        el.classList.remove('active');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 自动滚动到底部
+const observer = new MutationObserver(() => {
+    const container = document.getElementById('chatMessages');
+    container.scrollTop = container.scrollHeight;
+});
+observer.observe(document.getElementById('chatMessages'), { childList: true, subtree: true });
+</script>
+{% endblock %}

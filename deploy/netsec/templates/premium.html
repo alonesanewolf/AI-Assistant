@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}会员中心 - NetSec Platform{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-light: #6366f1;
+        --gold: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+        --bg: #0f172a;
+        --card-bg: #1e293b;
+        --border: #334155;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+    }
+    .premium-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 40px 24px;
+    }
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 30px;
+    }
+    
+    /* 状态卡片 */
+    .status-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-bottom: 36px;
+    }
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+    }
+    .stat-card .label {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+    .stat-card .value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+    .stat-card .value.pro { color: var(--primary-light); }
+    .stat-card .value.gold { color: var(--gold); }
+    .stat-card .value.green { color: var(--green); }
+    
+    /* 当前方案 */
+    .current-plan {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px;
+        margin-bottom: 36px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .current-plan .plan-info h3 {
+        font-size: 22px;
+        margin-bottom: 6px;
+    }
+    .current-plan .plan-info p {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+    .current-plan .plan-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .plan-badge.free { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .plan-badge.pro { background: rgba(79,70,229,0.2); color: #818cf8; }
+    .plan-badge.enterprise { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .btn-upgrade {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    /* 积分流水 */
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    .table-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 36px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    table th, table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    table th {
+        background: rgba(0,0,0,0.2);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .badge-earn { color: var(--green); font-weight: 600; }
+    .badge-spend { color: var(--red); font-weight: 600; }
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted);
+    }
+</style>
+
+<div class="premium-container">
+    <div class="page-title">会员中心</div>
+
+    <!-- 状态卡片 -->
+    <div class="status-cards">
+        <div class="stat-card">
+            <div class="label">当前等级</div>
+            <div class="value pro">{{ '企业会员' if status.is_enterprise else ('Pro 会员' if status.is_pro else '免费用户') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">积分余额</div>
+            <div class="value gold">{{ status.credits }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">会员到期</div>
+            <div class="value green">{{ status.expire_at or '永久' }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">方案名称</div>
+            <div class="value">{{ status.plan_name }}</div>
+        </div>
+    </div>
+
+    <!-- 当前方案 -->
+    <div class="current-plan">
+        <div class="plan-info">
+            <h3>
+                {{ status.plan_name }}
+                <span class="plan-badge {{ status.tier }}">{{ status.tier_name }}</span>
+            </h3>
+            <p>
+                每日扫描: {{ status.scan_limit_daily }}次 | 
+                每日 API: {{ status.api_limit_daily }}次 |
+                每月积分: {{ '1500' if status.tier == 'pro' else ('10000' if status.tier == 'enterprise' else '100') }}
+            </p>
+        </div>
+        {% if status.tier == 'free' %}
+        <a href="/pricing" class="btn-upgrade">升级会员</a>
+        {% elif status.tier == 'pro' %}
+        <a href="/pricing" class="btn-upgrade">升级企业版</a>
+        {% else %}
+        <a href="/pricing" class="btn-upgrade" style="background:linear-gradient(135deg, #f59e0b, #fbbf24);">管理订阅</a>
+        {% endif %}
+    </div>
+
+    <!-- 积分流水 -->
+    <div class="section-title">积分流水</div>
+    <div class="table-card">
+        {% if transactions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>类型</th>
+                    <th>数量</th>
+                    <th>说明</th>
+                    <th>订单号</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.created_at }}</td>
+                    <td>
+                        {% if t.type == 'earn' %}
+                        <span class="badge-earn">+ 获得</span>
+                        {% elif t.type == 'spend' %}
+                        <span class="badge-spend">- 消耗</span>
+                        {% else %}
+                        <span>{{ t.type }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.amount }}</td>
+                    <td>{{ t.reason }}</td>
+                    <td style="font-family:monospace;font-size:12px;">{{ t.order_id or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">暂无积分流水记录</div>
+        {% endif %}
+    </div>
+
+    <!-- 订单记录 -->
+    <div class="section-title">订单记录</div>
+    <div class="table-card">
+        {% if orders %}
+        <table>
+            <thead>
+                <tr>
+                    <th>订单编号</th>
+                    <th>商品</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in orders %}
+                <tr>
+                    <td style="font-family:monospace;font-size:12px;">{{ o.order_id }}</td>
+                    <td>{{ o.plan_id }}</td>
+                    <td>¥{{ '%.2f' | format(o.amount_cents/100) }}</td>
+                    <td>
+                        {% if o.status == 'paid' %}
+                        <span style="color:var(--green);">已支付</span>
+                        {% elif o.status == 'pending' %}
+                        <span style="color:var(--gold);">待支付</span>
+                        {% elif o.status == 'cancelled' %}
+                        <span style="color:var(--text-muted);">已取消</span>
+                        {% else %}
+                        <span>{{ o.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ o.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">暂无订单记录</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

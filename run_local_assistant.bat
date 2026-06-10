@@ -18,9 +18,10 @@ if exist "venv\Scripts\activate.bat" (
 echo [启动] 正在启动本地 AI 助手...
 echo.
 
-:: 设置环境变量
+:: 从 .env 加载配置
+call "%~dp0load_env.bat"
 if "%BRAIN_URL%"=="" set BRAIN_URL=http://localhost:5000
-set ENABLE_BRAIN_AGENT=true
+if "%ENABLE_BRAIN_AGENT%"=="" set ENABLE_BRAIN_AGENT=true
 
 :: 启动
 python local_assistant.py

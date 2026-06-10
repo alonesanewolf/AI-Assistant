@@ -403,6 +403,13 @@
 
                         <li>
                             <button class="tree-link"
+                                    data-url="{{ url_for('ai_attack_page') }}">
+                                <i class="bi bi-robot me-1"></i>AI 攻防
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
                                     data-url="{{ url_for('report_manage') }}">
                                 报告管理
                             </button>
@@ -448,6 +455,7 @@
             <button class="menu-btn active" data-panel="overview">平台概览</button>
             <button class="menu-btn" data-panel="tools">安全工具</button>
             <button class="menu-btn" data-panel="range">靶场实验</button>
+            <button class="menu-btn" data-panel="ai_attack">AI 攻防</button>
             <button class="menu-btn" data-panel="history">扫描记录</button>
             <button class="menu-btn" data-panel="about">系统说明</button>
         </nav>
@@ -623,6 +631,21 @@
                 </div>
 
                 <div class="function-card">
+                    <h4><i class="bi bi-robot me-1"></i>AI 智能攻防</h4>
+                    <p>AI 驱动的自动化渗透测试。自然语言对话即可执行扫描、漏洞利用和报告生成。</p>
+                    <ul>
+                        <li>AI 对话式攻防</li>
+                        <li>自动化渗透测试</li>
+                        <li>漏洞利用建议</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-primary" style="background:linear-gradient(135deg,#667eea,#764ba2);" href="{{ url_for('ai_attack_page') }}">
+                            开始攻防
+                        </a>
+                    </div>
+                </div>
+
+                <div class="function-card">
                     <h4>报告管理</h4>
                     <p>管理扫描报告，查看详情、导出下载、风险评估一目了然。</p>
                     <ul>
@@ -722,7 +745,8 @@
         adminUsers: "{{ url_for('admin_users') }}",
         adminRoles: "{{ url_for('admin_roles') }}",
         adminLogs: "{{ url_for('admin_logs') }}",
-        adminChallenges: "{{ url_for('admin_challenges') }}"
+        adminChallenges: "{{ url_for('admin_challenges') }}",
+        aiAttack: "{{ url_for('ai_attack_page') }}"
     };
 
     function showOverview() {
@@ -1243,6 +1267,21 @@
         `;
     }
 
+    function showAIAttack() {
+        contentPanel.innerHTML = `
+            <h3><i class="bi bi-robot me-2"></i>AI 网络安全攻防</h3>
+            <p>AI 驱动的自动化渗透测试。用自然语言描述目标，AI 自动规划攻击路径并执行操作。</p>
+            <div class="notice" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;">
+                <strong>模型状态：</strong>
+                <span id="ai-model-status">检测中...</span>
+            </div>
+            <div style="margin-top:16px;">
+                <iframe src="${urls.aiAttack}" style="width:100%;height:70vh;border:none;border-radius:8px;"
+                        onload="document.querySelector('.layout').style.overflow='hidden'"></iframe>
+            </div>
+        `;
+    }
+
     function showAbout() {
         contentPanel.innerHTML = `
             <h3>系统说明</h3>
@@ -1333,6 +1372,8 @@
                 showRange();
             } else if (panel === 'history') {
                 showHistory();
+            } else if (panel === 'ai_attack') {
+                showAIAttack();
             } else if (panel === 'about') {
                 showAbout();
             }

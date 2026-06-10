@@ -29,6 +29,12 @@ from NetSecAssistant import NetSecAssistant
 import network_scan
 import socket
 
+# 支付模块（已隐藏，待后续启用）
+# from payment import payment_manager, init_payment, get_user_status, CREDIT_COSTS
+def get_user_status(user_id=None):
+    """临时桩函数，隐藏支付功能"""
+    return {"plan": "free", "credits": 0, "is_premium": False, "expires_at": None}
+
 
 # =========================
 # 密码安全（PBKDF2-SHA512 + 随机盐，参考 authbase）
@@ -45,16 +51,18 @@ def hash_password(password, salt):
 
 
 def make_password_hash(password):
-    """生成密码哈希和盐（用于创建/更新用户）"""
-    salt = generate_salt()
-    pwd_hash = hash_password(password, salt).hex()
-    return pwd_hash, salt.hex()
+    """生成密码哈希（使用 werkzeug）"""
+    from werkzeug.security import generate_password_hash
+    return generate_password_hash(password)
 
 
-def verify_password(password, salt_hex, pwd_hash):
-    """验证密码（用于登录）"""
-    salt = bytes.fromhex(salt_hex)
-    return hash_password(password, salt).hex() == pwd_hash
+def verify_password(password, pwd_hash):
+    """验证密码（使用 werkzeug）"""
+    try:
+        from werkzeug.security import check_password_hash
+        return check_password_hash(pwd_hash, password)
+    except (ImportError, Exception):
+        return False
 
 
 # =========================
@@ -75,6 +83,66 @@ app = Flask(
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-me")
 app.permanent_session_lifetime = timedelta(hours=8)
+
+# =========================
+# 全局错误处理 + 日志
+# =========================
+
+import logging
+import traceback as _traceback
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_errors.log")),
+        logging.StreamHandler(),
+    ],
+)
+app_logger = logging.getLogger("netsec_app")
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """全局 500 错误处理器：记录错误日志并返回友好页面"""
+    tb = _traceback.format_exc()
+    app_logger.error(f"500 内部错误:\n{tb}")
+    # 尝试回滚数据库（如果处于事务中）
+    try:
+        db = get_db_connection()
+        db.rollback()
+        db.close()
+    except Exception:
+        pass
+    return render_template("500.html", error=str(e)) if os.path.exists(
+        os.path.join(app.template_folder, "500.html")
+    ) else (
+        "<h1>500 - 服务器内部错误</h1>"
+        "<p>抱歉，服务器遇到了意外错误。错误已记录，请稍后重试。</p>"
+        "<p><a href='/netsec/'>返回首页</a></p>"
+    ), 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """捕获所有未处理异常"""
+    tb = _traceback.format_exc()
+    app_logger.error(f"未捕获异常: {type(e).__name__}: {e}\n{tb}")
+    # 尝试回滚数据库
+    try:
+        db = get_db_connection()
+        db.rollback()
+        db.close()
+    except Exception:
+        pass
+    return render_template("500.html", error=str(e)) if os.path.exists(
+        os.path.join(app.template_folder, "500.html")
+    ) else (
+        "<h1>500 - 服务器内部错误</h1>"
+        "<p>抱歉，服务器遇到了意外错误。错误已记录，请稍后重试。</p>"
+        "<p><a href='/netsec/'>返回首页</a></p>"
+    ), 500
+
 
 # SCRIPT_NAME 用于 url_for 生成带前缀的 URL
 if APPLICATION_ROOT:
@@ -170,14 +238,17 @@ def ensure_database_and_tables():
         raise FileNotFoundError(f"数据库脚本不存在: {INIT_SQL_PATH}")
 
     admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123456")
-    admin_pwd_hash, admin_salt = make_password_hash(admin_password)
+    admin_pwd_hash = make_password_hash(admin_password)
 
-    with open(INIT_SQL_PATH, "r", encoding="utf-8") as f:
-        init_sql = f.read().format(
-            DB_NAME=DB_NAME,
-            ADMIN_PASSWORD_HASH=admin_pwd_hash,
-            ADMIN_SALT=admin_salt
-        )
+    try:
+        with open(INIT_SQL_PATH, "r", encoding="utf-8") as f:
+            init_sql = f.read().format(
+                DB_NAME=DB_NAME,
+                ADMIN_PASSWORD_HASH=admin_pwd_hash,
+                ADMIN_SALT=""
+            )
+    except (IOError, KeyError, ValueError) as e:
+        raise RuntimeError(f"读取或解析 SQL 初始化脚本失败: {e}")
 
     statements = [stmt.strip() for stmt in init_sql.split(";") if stmt.strip()]
     server_conn = get_server_connection()
@@ -189,9 +260,38 @@ def ensure_database_and_tables():
                 except pymysql.err.IntegrityError:
                     # 忽略重复插入等唯一键冲突，表已存在数据时正常跳过
                     pass
+                except Exception as e:
+                    app_logger.warning(f"执行 SQL 语句失败(已跳过): {str(statement)[:100]}... 错误: {e}")
         server_conn.commit()
+    except Exception as e:
+        server_conn.rollback()
+        raise RuntimeError(f"数据库表初始化失败: {e}")
     finally:
         server_conn.close()
+
+
+def migrate_users_table():
+    """给旧版 users 表补上缺失的列（兼容平滑升级）"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # 添加 password_salt 列（如果不存在）
+            cur.execute("SHOW COLUMNS FROM users LIKE 'password_salt'")
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE users ADD COLUMN password_salt VARCHAR(64) NOT NULL DEFAULT ''")
+                app_logger.info("已添加 users.password_salt 列")
+            # 添加 role_key 列（如果不存在）
+            cur.execute("SHOW COLUMNS FROM users LIKE 'role_key'")
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE users ADD COLUMN role_key VARCHAR(32) NOT NULL DEFAULT 'user' COMMENT '角色标识'")
+                app_logger.info("已添加 users.role_key 列")
+                # 将已存在的 admin 用户设为 admin 角色
+                cur.execute("UPDATE users SET role_key='admin' WHERE username='admin' AND role_key='user'")
+        conn.commit()
+    except Exception as e:
+        app_logger.warning(f"users 表迁移失败: {e}")
+    finally:
+        conn.close()
 
 
 @app.before_request
@@ -199,8 +299,20 @@ def init_db_once():
     global DB_READY
     if DB_READY:
         return
-    ensure_database_and_tables()
-    DB_READY = True
+    try:
+        ensure_database_and_tables()
+        migrate_users_table()
+        DB_READY = True
+    except Exception as e:
+        app_logger.error(f"数据库初始化失败: {e}\n{_traceback.format_exc()}")
+        # 不设置 DB_READY，让后续请求继续重试
+        # 跳过静态文件请求的错误提示
+        if not request.path.startswith(f"{APPLICATION_ROOT}/static") and request.path != f"{APPLICATION_ROOT}/api/health":
+            return (
+                "<h1>503 - 服务暂时不可用</h1>"
+                "<p>数据库连接失败，请稍后重试或联系管理员。</p>"
+                "<p><a href='javascript:location.reload()'>刷新页面</a></p>"
+            ), 503
 
 
 # =========================
@@ -306,7 +418,11 @@ def get_client_ip():
 
 
 def is_locked(ip):
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"is_locked: 数据库连接失败: {e}")
+        return False, 0
     try:
         with db.cursor() as cur:
             cur.execute("SELECT failed_count, lock_until FROM login_attempts WHERE ip_address=%s LIMIT 1", (ip,))
@@ -322,12 +438,19 @@ def is_locked(ip):
                 db.commit()
                 return False, 0
             return False, 0
+    except Exception as e:
+        app_logger.error(f"is_locked: 查询失败: {e}")
+        return False, 0
     finally:
         db.close()
 
 
 def register_failed_attempt(ip):
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"register_failed_attempt: 数据库连接失败: {e}")
+        return
     try:
         with db.cursor() as cur:
             cur.execute("SELECT failed_count FROM login_attempts WHERE ip_address=%s FOR UPDATE", (ip,))
@@ -341,16 +464,24 @@ def register_failed_attempt(ip):
                 cur.execute("INSERT INTO login_attempts (ip_address, failed_count, lock_until) VALUES (%s, %s, %s)",
                             (ip, 1, None))
         db.commit()
+    except Exception as e:
+        app_logger.error(f"register_failed_attempt: 操作失败: {e}")
     finally:
         db.close()
 
 
 def clear_attempts(ip):
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"clear_attempts: 数据库连接失败: {e}")
+        return
     try:
         with db.cursor() as cur:
             cur.execute("DELETE FROM login_attempts WHERE ip_address=%s", (ip,))
         db.commit()
+    except Exception as e:
+        app_logger.error(f"clear_attempts: 操作失败: {e}")
     finally:
         db.close()
 
@@ -377,7 +508,11 @@ def record_vuln_attempt(vuln_id, passed=False):
     if not user_id:
         return
 
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"record_vuln_attempt: 数据库连接失败: {e}")
+        return
     try:
         with db.cursor() as cur:
             # 查找已有记录
@@ -409,6 +544,9 @@ def record_vuln_attempt(vuln_id, passed=False):
                      datetime.now() if passed else None)
                 )
         db.commit()
+    except Exception as e:
+        app_logger.error(f"record_vuln_attempt: 操作失败(vuln={vuln_id}): {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -429,7 +567,11 @@ def get_user_progress_map():
     user_id = session.get("user_id")
     if not user_id:
         return {}
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"get_user_progress_map: 数据库连接失败: {e}")
+        return {}
     try:
         with db.cursor() as cur:
             cur.execute(
@@ -437,6 +579,9 @@ def get_user_progress_map():
                 (user_id,)
             )
             return {p["vuln_id"]: p for p in cur.fetchall()}
+    except Exception as e:
+        app_logger.error(f"get_user_progress_map: 查询失败: {e}")
+        return {}
     finally:
         db.close()
 
@@ -492,13 +637,18 @@ def register():
                 if cur.fetchone():
                     flash("用户名已经存在，请更换后重试。", "error")
                     return render_template("register.html")
-                pwd_hash, pwd_salt = make_password_hash(password)
+                pwd_hash = make_password_hash(password)
                 cur.execute(
-                    "INSERT INTO users (username, display_name, password_hash, password_salt, role_key) "
-                    "VALUES (%s, %s, %s, %s, 'user')",
-                    (username, display_name, pwd_hash, pwd_salt)
+                    "INSERT INTO users (username, display_name, password_hash, role_key) "
+                    "VALUES (%s, %s, %s, 'user')",
+                    (username, display_name, pwd_hash)
                 )
             db.commit()
+        except Exception as e:
+            app_logger.error(f"register: 数据库操作失败: {e}")
+            db.rollback()
+            flash("注册失败，服务器内部错误，请稍后重试。", "error")
+            return render_template("register.html")
         finally:
             db.close()
 
@@ -546,27 +696,25 @@ def login():
         try:
             with db.cursor() as cur:
                 cur.execute(
-                    "SELECT id, username, display_name, password_hash, password_salt, role_key, is_active "
+                    "SELECT id, username, display_name, password_hash, role_key, is_active "
                     "FROM users WHERE username=%s LIMIT 1",
                     (username,)
                 )
                 user = cur.fetchone()
+        except Exception as e:
+            app_logger.error(f"login: 用户查询失败: {e}")
+            flash("服务器内部错误，请稍后重试。", "error")
+            return render_login_page(locked=False, remaining_minutes=0)
         finally:
             db.close()
 
-        # 使用 PBKDF2-SHA512 验证密码
         if not user or not user.get("is_active"):
             register_failed_attempt(ip)
             locked, remaining_minutes = is_locked(ip)
             flash("账号或者密码错误。", "error")
             return render_login_page(locked=locked, remaining_minutes=remaining_minutes)
 
-        # 兼容旧数据：如果没有 salt 字段，回退到 werkzeug
-        if user.get("password_salt"):
-            pwd_ok = verify_password(password, user["password_salt"], user["password_hash"])
-        else:
-            from werkzeug.security import check_password_hash
-            pwd_ok = check_password_hash(user["password_hash"], password)
+        pwd_ok = verify_password(password, user["password_hash"])
 
         if not pwd_ok:
             register_failed_attempt(ip)
@@ -594,6 +742,9 @@ def login():
                     (ip, user["id"])
                 )
             db2.commit()
+        except Exception as e:
+            app_logger.error(f"login: 更新登录信息失败: {e}")
+            db2.rollback()
         finally:
             db2.close()
 
@@ -611,11 +762,14 @@ def login():
 @app.route("/index")
 @login_required
 def index():
+    user_id = session.get("user_id")
+    user_status = get_user_status(user_id)
     return render_template(
         "index.html",
         display_name=session.get("display_name", "用户"),
         login_time=session.get("login_time", "-"),
         role_key=session.get("role_key", "user"),
+        user_status=user_status,
     )
 
 
@@ -637,7 +791,16 @@ def range_page():
 @login_required
 def port_scan_page():
     if request.method != "POST":
-        return render_template("port_scan.html")
+        user_id = session.get("user_id")
+        status = get_user_status(user_id)
+        return render_template("port_scan.html", user_status=status)
+
+    # 积分/配额检查（已隐藏）
+    # user_id = session.get("user_id")
+    # usage = payment_manager.check_and_consume_usage(user_id, "port_scan")
+    # if not usage["allowed"]:
+    #     flash(usage["message"], "error")
+    #     return redirect(url_for("pricing_page"))
 
     target = request.form.get("target", "").strip()
     ports = request.form.get("ports", "1-1024").strip()
@@ -1047,7 +1210,12 @@ def dvwa_env():
 @app.route("/dvwa/vulnerabilities")
 @login_required
 def dvwa_vulnerabilities():
-    db = get_db_connection()
+    vulns = []
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"dvwa_vulnerabilities: 数据库连接失败: {e}")
+        return render_template("dvwa_vulnerabilities.html", vulns=vulns, error="数据库连接失败")
     try:
         with db.cursor() as cur:
             cur.execute("SELECT * FROM vulnerabilities WHERE is_active=1 ORDER BY category, id")
@@ -1057,6 +1225,9 @@ def dvwa_vulnerabilities():
             for v in vulns:
                 v['url'] = get_vuln_urls().get(v['vuln_id'], '#')
                 v['passed'] = progress_map.get(v['vuln_id'], {}).get('status') == 'passed'
+    except Exception as e:
+        app_logger.error(f"dvwa_vulnerabilities: 查询失败: {e}")
+        vulns = []
     finally:
         db.close()
     return render_template("dvwa_vulnerabilities.html", vulns=vulns)
@@ -1076,7 +1247,11 @@ def api_vuln_check_pass():
         return jsonify({"passed": False, "message": "缺少参数"})
 
     user_id = session.get("user_id")
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        app_logger.error(f"api_vuln_check_pass: 数据库连接失败: {e}")
+        return jsonify({"passed": False, "message": "服务器内部错误"}), 500
     try:
         with db.cursor() as cur:
             # 检查漏洞是否存在且启用
@@ -1105,6 +1280,10 @@ def api_vuln_check_pass():
                 db.commit()
 
             return jsonify({"passed": False, "message": "继续加油！"})
+    except Exception as e:
+        app_logger.error(f"api_vuln_check_pass: 操作失败(vuln={vuln_id}): {e}")
+        db.rollback()
+        return jsonify({"passed": False, "message": "检测失败，请重试"}), 500
     finally:
         db.close()
 
@@ -1385,7 +1564,13 @@ def vuln_file_upload():
     success = None
     error = None
     upload_dir = os.path.join(BASE_DIR, "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+    except OSError as e:
+        app_logger.error(f"file_upload: 创建上传目录失败: {e}")
+        error = f"服务器文件系统错误，无法创建上传目录。"
+        return render_template("vulnerabilities/file_upload.html",
+                              success=success, error=error, uploaded_files=[])
 
     if request.method == "POST":
         if 'file' not in request.files:
@@ -1395,26 +1580,33 @@ def vuln_file_upload():
             if file.filename == '':
                 error = "没有选择文件"
             else:
-                filename = file.filename
-                filepath = os.path.join(upload_dir, filename)
-                file.save(filepath)
-                success = {
-                    'filename': filename,
-                    'path': filepath,
-                    'size': os.path.getsize(filepath)
-                }
-                record_vuln_attempt("file_upload", passed=True)
+                try:
+                    filename = file.filename
+                    filepath = os.path.join(upload_dir, filename)
+                    file.save(filepath)
+                    success = {
+                        'filename': filename,
+                        'path': filepath,
+                        'size': os.path.getsize(filepath)
+                    }
+                    record_vuln_attempt("file_upload", passed=True)
+                except Exception as e:
+                    app_logger.error(f"file_upload: 文件保存失败: {e}")
+                    error = f"文件上传失败: {str(e)}"
 
     # 获取已上传文件列表
     uploaded_files = []
-    for f in os.listdir(upload_dir):
-        fpath = os.path.join(upload_dir, f)
-        if os.path.isfile(fpath):
-            uploaded_files.append({
+    try:
+        for f in os.listdir(upload_dir):
+            fpath = os.path.join(upload_dir, f)
+            if os.path.isfile(fpath):
+                uploaded_files.append({
                 'name': f,
                 'size': f"{os.path.getsize(fpath)} 字节",
                 'url': url_for('uploaded_file', filename=f)
             })
+    except OSError as e:
+        app_logger.error(f"file_upload: 读取文件列表失败: {e}")
 
     return render_template("vulnerabilities/file_upload.html",
                            success=success, error=error, uploaded_files=uploaded_files)
@@ -1459,7 +1651,9 @@ def vuln_xss_stored():
         with db.cursor() as cur:
             cur.execute("SELECT name, message, created_at FROM xss_messages ORDER BY created_at DESC LIMIT 20")
             messages = cur.fetchall()
-    except:
+    except Exception as e:
+        # 表可能不存在，尝试创建
+        app_logger.warning(f"xss_stored: 查询消息失败(尝试建表): {e}")
         with db.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS xss_messages (
@@ -1850,11 +2044,11 @@ def admin_user_add():
             if cur.fetchone():
                 flash(f"用户名 {username} 已存在。", "error")
                 return redirect(url_for("admin_users"))
-            pwd_hash, pwd_salt = make_password_hash(password)
+            pwd_hash = make_password_hash(password)
             cur.execute(
-                "INSERT INTO users (username, display_name, password_hash, password_salt, role_key) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (username, display_name, pwd_hash, pwd_salt, role_key)
+                "INSERT INTO users (username, display_name, password_hash, role_key) "
+                "VALUES (%s, %s, %s, %s)",
+                (username, display_name, pwd_hash, role_key)
             )
         db.commit()
         flash(f"用户「{display_name}」创建成功！", "success")
@@ -1949,10 +2143,10 @@ def admin_user_reset_password():
     db = get_db_connection()
     try:
         with db.cursor() as cur:
-            pwd_hash, pwd_salt = make_password_hash(default_password)
+            pwd_hash = make_password_hash(default_password)
             cur.execute(
-                "UPDATE users SET password_hash=%s, password_salt=%s WHERE id=%s",
-                (pwd_hash, pwd_salt, user_id)
+                "UPDATE users SET password_hash=%s WHERE id=%s",
+                (pwd_hash, user_id)
             )
         db.commit()
         flash(f"密码已重置，请通知用户尽快修改。", "success")
@@ -2507,6 +2701,375 @@ def logout():
     session.clear()
     flash("已经安全退出系统。", "success")
     return redirect(url_for("login"))
+
+
+# =========================
+# 功能模块说明页
+# =========================
+
+@app.route("/modules")
+@login_required
+def modules_page():
+    """功能模块说明页面"""
+    return render_template("modules.html")
+
+
+# =========================
+# AI 网络安全攻防模块
+# =========================
+
+# AI 攻防系统提示词
+AI_ATTACK_DEFENSE_PROMPT = """你是一个专业的 AI 网络安全攻防助手，运行在网络安全培训平台上。
+你的任务是帮助用户在授权的靶场环境中进行自动化渗透测试和安全攻防演练。
+
+## 核心能力
+1. **自动化扫描**: 对目标主机/网段执行端口扫描、服务发现、漏洞检测
+2. **漏洞利用**: 根据扫描结果自动生成和注入 payload，完成漏洞利用
+3. **密码破解**: 使用字典/暴力破解尝试弱口令登录
+4. **Web漏洞检测**: SQL注入、XSS、CSRF、命令注入、文件包含等
+5. **安全建议**: 根据发现的问题给出修复方案
+
+## 可用操作命令
+当你需要执行实际操作时，使用以下格式输出：
+- 端口扫描: [SCAN:port]目标IP:端口范围[/SCAN]
+- 网络扫描: [SCAN:network]网段[/SCAN]
+- 目录扫描: [SCAN:dir]目标URL[/SCAN]
+- 子域名枚举: [SCAN:subdomain]域名[/SCAN]
+- WAF检测: [SCAN:waf]目标URL[/SCAN]
+- 指纹识别: [SCAN:fingerprint]目标:端口[/SCAN]
+- 执行命令: [CMD:run_command]命令[/CMD]
+- SQL注入测试: [ATTACK:sqli]目标URL[/ATTACK]
+- XSS测试: [ATTACK:xss]目标URL[/ATTACK]
+- 命令注入: [ATTACK:cmdi]目标:参数[/ATTACK]
+
+## 规则
+1. 一次只输出一个操作指令
+2. 攻击仅限授权靶场环境
+3. 结果出来后分析并给出下一步建议
+4. 用中文简洁回复
+
+当前时间: {current_time}
+用户角色: 安全研究员"""
+
+# AI 攻防会话历史
+attack_sessions: dict = {}  # session_id -> [messages]
+
+@app.route("/ai-attack")
+@login_required
+def ai_attack_page():
+    """AI 网络安全攻防页面"""
+    return render_template("ai_attack.html")
+
+
+@app.route("/api/ai-attack/chat", methods=["POST"])
+@login_required
+def api_ai_attack_chat():
+    """AI 攻防对话接口"""
+    data = request.get_json()
+    user_message = data.get("message", "").strip()
+    session_id = data.get("session_id", f"attack_{session.get('user_id')}")
+    target = data.get("target", "").strip()
+
+    if not user_message:
+        return jsonify({"success": False, "error": "缺少消息内容"})
+
+    # 初始化会话
+    if session_id not in attack_sessions:
+        attack_sessions[session_id] = []
+
+    history = attack_sessions[session_id]
+    if len(history) > 30:
+        history = history[-30:]
+
+    messages = [
+        {"role": "system", "content": AI_ATTACK_DEFENSE_PROMPT.format(
+            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )}
+    ] + history + [{"role": "user", "content": user_message}]
+
+    try:
+        # 调用 AI 模型
+        from model_router import ModelRouter
+        router = ModelRouter(mode="cloud_first")
+        result = router.chat(messages=messages, temperature=0.7, max_tokens=4096)
+
+        reply = result.get("content", "")
+        model_used = result.get("model", "unknown")
+
+        # 保存历史
+        history.append({"role": "user", "content": user_message})
+        history.append({"role": "assistant", "content": reply})
+        attack_sessions[session_id] = history
+
+        # 解析操作指令
+        operations = _parse_attack_commands(reply)
+
+        return jsonify({
+            "success": True,
+            "reply": _clean_attack_tags(reply),
+            "model": model_used,
+            "operations": operations,
+        })
+
+    except Exception as e:
+        # 回退：无 AI 时的本地分析
+        fallback_reply = _fallback_attack_analysis(user_message, target)
+        return jsonify({
+            "success": True,
+            "reply": fallback_reply,
+            "model": "local_fallback",
+            "operations": [],
+            "fallback": True,
+        })
+
+
+@app.route("/api/ai-attack/execute", methods=["POST"])
+@login_required
+def api_ai_attack_execute():
+    """执行 AI 推荐的攻防操作"""
+    data = request.get_json()
+    op_type = data.get("type", "")
+    op_params = data.get("params", "")
+
+    if not op_type:
+        return jsonify({"success": False, "error": "缺少操作类型"})
+
+    try:
+        result = _execute_attack_operation(op_type, op_params)
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+def _parse_attack_commands(reply: str) -> list:
+    """从 AI 回复中解析攻防操作指令"""
+    import re
+    ops = []
+
+    # 扫描指令
+    for match in re.finditer(r"\[SCAN:(\w+)\](.*?)\[/SCAN\]", reply):
+        ops.append({"type": f"scan_{match.group(1)}", "params": match.group(2).strip()})
+
+    # 攻击指令
+    for match in re.finditer(r"\[ATTACK:(\w+)\](.*?)\[/ATTACK\]", reply):
+        ops.append({"type": f"attack_{match.group(1)}", "params": match.group(2).strip()})
+
+    # 命令执行
+    for match in re.finditer(r"\[CMD:(\w+)\](.*?)\[/CMD\]", reply):
+        ops.append({"type": f"cmd_{match.group(1)}", "params": match.group(2).strip()})
+
+    return ops
+
+
+def _clean_attack_tags(reply: str) -> str:
+    """清除攻防标签，返回干净文本"""
+    import re
+    reply = re.sub(r"\[SCAN:\w+\].*?\[/SCAN\]", "", reply, flags=re.DOTALL)
+    reply = re.sub(r"\[ATTACK:\w+\].*?\[/ATTACK\]", "", reply, flags=re.DOTALL)
+    reply = re.sub(r"\[CMD:\w+\].*?\[/CMD\]", "", reply, flags=re.DOTALL)
+    return reply.strip()
+
+
+def _execute_attack_operation(op_type: str, params: str) -> str:
+    """执行攻防操作"""
+    if op_type == "scan_port":
+        target_parts = params.split(":")
+        target = target_parts[0].strip()
+        ports = target_parts[1].strip() if len(target_parts) > 1 else "1-1024"
+        try:
+            assistant = NetSecAssistant(timeout=2, workers=50)
+            open_ports = assistant.run_port_scan(target, ports) or []
+            return f"端口扫描完成，发现 {len(open_ports)} 个开放端口: {', '.join(map(str, open_ports))}"
+        except Exception as e:
+            return f"端口扫描失败: {e}"
+
+    elif op_type == "scan_dir":
+        url = params.strip()
+        if not url.startswith("http"):
+            url = "http://" + url
+        try:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            DEFAULT_DICT = ["admin", "login", "index.php", "backup", "db", "config", ".git", "robots.txt",
+                           "wp-admin", "shell.php", "upload", "api", "test", "dev", "console", "phpinfo.php"]
+            results = []
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                future_map = {executor.submit(network_scan.scan_dir, url, path, 3): path for path in DEFAULT_DICT}
+                for future in as_completed(future_map):
+                    r = future.result()
+                    if r:
+                        path, code, size = r
+                        results.append(f"  [{code}] {path} ({size}字节)")
+            if results:
+                return "目录扫描结果:\n" + "\n".join(results)
+            return "未发现常见目录"
+        except Exception as e:
+            return f"目录扫描失败: {e}"
+
+    elif op_type == "scan_waf":
+        url = params.strip()
+        if not url.startswith("http"):
+            url = "http://" + url
+        try:
+            assistant = NetSecAssistant(timeout=5)
+            assistant.results_log = []
+            assistant.detect_waf(url)
+            logs = assistant.results_log
+            if logs:
+                return "WAF检测结果:\n" + "\n".join(logs)
+            return "未检测到WAF"
+        except Exception as e:
+            return f"WAF检测失败: {e}"
+
+    elif op_type == "scan_subdomain":
+        domain = params.strip().replace("http://", "").replace("https://", "").split("/")[0]
+        try:
+            assistant = NetSecAssistant(timeout=2, workers=50)
+            subs = assistant.run_subdomain_enum(domain) or []
+            if subs:
+                return f"子域名枚举完成，发现 {len(subs)} 个子域名:\n" + "\n".join(subs[:20])
+            return "未发现子域名"
+        except Exception as e:
+            return f"子域名枚举失败: {e}"
+
+    elif op_type == "scan_fingerprint":
+        parts = params.strip().split(":")
+        target = parts[0].strip()
+        ports_str = parts[1].strip() if len(parts) > 1 else "22,80,443,3306,8080"
+        try:
+            assistant = NetSecAssistant(timeout=2)
+            ports = assistant.parse_ports(ports_str)
+            try:
+                target_ip = socket.gethostbyname(target)
+            except socket.gaierror:
+                return f"无法解析主机: {target}"
+            results = []
+            for port in ports:
+                if assistant.scan_port(target_ip, port):
+                    banner = assistant.get_banner(target_ip, port)
+                    results.append(f"  端口 {port}: {banner[:80] if banner else '开放(无banner)'}")
+            if results:
+                return f"指纹识别结果 ({target}):\n" + "\n".join(results)
+            return f"目标 {target} 所有端口均关闭"
+        except Exception as e:
+            return f"指纹识别失败: {e}"
+
+    elif op_type == "cmd_run_command":
+        cmd = params.strip()
+        try:
+            import subprocess
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+            output = result.stdout.strip() or result.stderr.strip()
+            return output[:2000] if output else "命令执行完毕（无输出）"
+        except subprocess.TimeoutExpired:
+            return "命令执行超时（15秒）"
+        except Exception as e:
+            return f"命令执行失败: {e}"
+
+    elif op_type == "attack_sqli":
+        url = params.strip()
+        return f"SQL注入测试建议:\n1. 尝试在参数后添加单引号测试报错: {url}'\n2. 尝试经典注入: {url} OR 1=1--\n3. 使用 UNION SELECT 测试列数\n4. 尝试盲注: AND SLEEP(5)--\n请在DVWA SQL注入练习页面中实践"
+
+    elif op_type == "attack_xss":
+        url = params.strip()
+        return f"XSS测试建议:\n1. 反射型: 在搜索框输入 <script>alert(1)</script>\n2. 存储型: 在留言板发布包含脚本的内容\n3. DOM型: 检查URL hash参数\n请在DVWA XSS练习页面中实践"
+
+    elif op_type == "attack_cmdi":
+        parts = params.strip().split(":")
+        target = parts[0] if parts else params
+        return f"命令注入测试建议:\n1. 尝试在ping目标后追加: {target} && whoami\n2. 尝试管道符: {target} | dir\n3. 尝试分号: {target}; ls\n请在DVWA命令注入练习页面中实践"
+
+    return f"未知操作类型: {op_type}"
+
+
+def _fallback_attack_analysis(message: str, target: str = "") -> str:
+    """本地回退分析（无需 AI API）"""
+    msg_lower = message.lower()
+
+    if any(kw in msg_lower for kw in ["扫描", "scan", "端口", "port"]):
+        target = target or "127.0.0.1"
+        return f"我将对目标 {target} 执行端口扫描。常见端口范围 1-1024。\n\n你可以前往「扫描工具 → 端口扫描」手动执行，或告诉我具体的目标和端口范围。"
+
+    if any(kw in msg_lower for kw in ["sql", "注入", "sqli"]):
+        return "SQL注入攻击步骤:\n1. 在DVWA SQL注入页面输入 1' 测试报错\n2. 使用 1 OR 1=1-- 绕过认证\n3. 使用 UNION SELECT 获取数据库信息\n4. 使用 information_schema 枚举表名和列名\n\n前往 DVWA 漏洞练习 → SQL注入 开始练习"
+
+    if any(kw in msg_lower for kw in ["xss", "跨站"]):
+        return "XSS攻击步骤:\n1. 反射型: 在URL参数中注入 <script>alert(1)</script>\n2. 存储型: 留言板发布包含脚本的内容\n3. DOM型: 利用前端JS代码漏洞\n\n前往 DVWA 漏洞练习 → XSS 开始练习"
+
+    if any(kw in msg_lower for kw in ["命令", "注入", "command", "cmd"]):
+        return "命令注入攻击:\n1. 在ping功能中注入 && 或 | 分隔符\n2. 尝试: 127.0.0.1 && whoami\n3. 尝试: 127.0.0.1; dir\n\n前往 DVWA 漏洞练习 → 命令注入 开始练习"
+
+    if any(kw in msg_lower for kw in ["文件", "包含", "include", "file"]):
+        return "文件包含漏洞:\n1. 本地文件包含(LFI): 使用 ../ 遍历目录\n2. 尝试读取 /etc/passwd 或 C:\\Windows\\win.ini\n3. 远程文件包含(RFI): 包含远程恶意脚本\n\n前往 DVWA 漏洞练习 → 文件包含 开始练习"
+
+    if any(kw in msg_lower for kw in ["爆破", "暴力", "密码", "brute"]):
+        return "暴力破解攻击:\n1. 使用常见弱密码字典: admin/123456/password\n2. 对登录表单进行自动化尝试\n3. 注意验证码绕过和速率限制\n\n前往 DVWA 漏洞练习 → 暴力破解 开始练习"
+
+    if any(kw in msg_lower for kw in ["csrf", "跨站请求"]):
+        return "CSRF攻击:\n1. 构造恶意HTML页面\n2. 诱导受害者点击链接\n3. 利用已登录的会话执行未授权操作\n\n前往 DVWA 漏洞练习 → CSRF 开始练习"
+
+    return f"我是AI网络安全攻防助手。你可以:\n• 告诉我你想练习的漏洞类型（SQL注入/XSS/命令注入/文件包含/CSRF等）\n• 描述一个攻击场景，我会给出步骤建议\n• 让我对目标执行自动化扫描（需要指定目标IP/域名）\n\n当前可用靶场: DVWA漏洞练习(14个漏洞)、端口扫描、WAF检测、指纹识别等"
+
+
+@app.route("/api/ai-attack/agent-status")
+@login_required
+def api_agent_status():
+    """检测云端大脑 Agent 连接状态"""
+    import urllib.request
+    import urllib.error
+    brain_url = os.environ.get("BRAIN_URL", "http://127.0.0.1:5000")
+    agents = []
+    brain_online = False
+    try:
+        req = urllib.request.Request(f"{brain_url}/api/agents", method="GET")
+        req.add_header("User-Agent", "NetSec-Platform/1.0")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            agents = data.get("agents", [])
+            brain_online = True
+    except Exception:
+        pass
+    return jsonify({
+        "agents": agents,
+        "count": len(agents),
+        "brain_online": brain_online,
+        "brain_url": brain_url,
+    })
+
+
+@app.route("/api/health")
+def api_health():
+    """平台健康检查"""
+    return jsonify({
+        "status": "ok",
+        "time": datetime.now().isoformat(),
+        "platform": "NetSec",
+        "db_ready": DB_READY,
+        "ai_module": True,
+    })
+
+
+# =========================
+# 支付/会员系统（已隐藏，待后续启用）
+# =========================
+
+# def init_payment_module():
+#     """初始化支付模块（注入数据库连接器）"""
+#     pm = init_payment(lambda: get_db_connection())
+#     payment_manager._db_connector = lambda: get_db_connection()
+#     return pm
+
+
+# @app.route("/pricing")
+# def pricing_page():
+#     """定价页面（已隐藏）"""
+#     return render_template("pricing.html")
+
+
+# @app.route("/premium")
+# @login_required
+# def premium_page():
+#     """会员中心（已隐藏）"""
+#     return redirect(url_for("modules_page"))
 
 
 # =========================

@@ -8,9 +8,6 @@ build/
 venv/
 .env
 
-# 配置文件（含敏感信息，不提交）
-config.py
-
 # 数据库和内存文件
 *.db
 *.db-journal
@@ -40,10 +37,33 @@ server/tomcat/
 # 临时目录
 try-three/
 20260522102228/
+authbase*/
+
+# 外部参考项目（勿提交）
 
 # 部署日志
 /var/
 *.tar
+*.tar.gz
+
+# 调试/临时产物
+cookies*.txt
+captcha*.png
+*_check.html
+login*.html
+logout.html
+cmd*.html
+admin_*.html
+ssh_diag*.py
+ssh_check.py
+ssh_fix.py
+fix_ssh.py
+fix_ping.py
+analyze_login.py
+test_login.py
+debug_page.py
+quick_test.py
+check_lock.py
 
 # 个人文件
 *简历*.docx

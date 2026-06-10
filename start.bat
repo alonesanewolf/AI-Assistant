@@ -49,9 +49,10 @@ goto end
 :local
 echo.
 echo 启动本地 Web 助手...
-call venv\Scripts\activate.bat
-set ROUTER_MODE=local_first
-set ENABLE_BRAIN_AGENT=true
+if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat
+call "%~dp0load_env.bat"
+if "%ROUTER_MODE%"=="" set ROUTER_MODE=local_first
+if "%ENABLE_BRAIN_AGENT%"=="" set ENABLE_BRAIN_AGENT=true
 python local_assistant.py
 pause
 goto end
@@ -83,7 +84,8 @@ goto end
 :brain
 echo.
 echo 启动云端 Brain 服务...
-call venv\Scripts\activate.bat
+if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat
+call "%~dp0load_env.bat"
 python brain.py
 pause
 goto end

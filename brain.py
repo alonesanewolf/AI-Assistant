@@ -37,7 +37,7 @@ if sys.platform == "win32":
 from flask import Flask, render_template_string, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
-# 导入模型路由器（支持 DeepSeek + 本地 Ollama）
+import config  # noqa: F401 — 加载 .env
 from model_router import ModelRouter
 
 # ==================== 配置 ====================
@@ -66,7 +66,7 @@ REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
 
 # 服务配置
 HOST = "0.0.0.0"
-PORT = 5000
+PORT = int(os.environ.get("BRAIN_PORT", "5000"))
 
 # ==================== Redis 消息队列 ====================
 
@@ -217,7 +217,8 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
 
 # 初始化组件
 queue = RedisQueue()
-model_router = ModelRouter()  # 智能模型路由器（DeepSeek + Ollama）
+router_mode = os.environ.get("ROUTER_MODE", "cloud_first")  # 云端部署默认 cloud_first
+model_router = ModelRouter(mode=router_mode)  # 智能模型路由器（DeepSeek + Ollama）
 
 # QQ Bot（如果启用）
 qq_bot = None

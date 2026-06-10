@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}服务器错误 - NetSec{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card shadow-sm">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                    <h2 class="text-danger mb-3">500 - 服务器内部错误</h2>
+                    <p class="text-muted mb-4">
+                        抱歉，服务器遇到了意外错误，无法完成您的请求。<br>
+                        错误已自动记录，我们的技术团队将尽快排查。
+                    </p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="javascript:location.reload()" class="btn btn-outline-secondary">
+                            刷新页面
+                        </a>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

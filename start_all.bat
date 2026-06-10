@@ -8,7 +8,7 @@ echo ============================================
 echo.
 
 :: 进入项目目录
-cd /d "%~dp0.."
+cd /d "%~dp0"
 
 :: 检查 Python
 python --version >nul 2>&1

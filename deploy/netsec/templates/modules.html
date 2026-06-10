@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+{% block title %}功能模块 - 网络安全助手{% endblock %}
+{% block extra_head %}
+<style>
+    .module-card {
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+        overflow: hidden;
+    }
+    .module-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,.1);
+        transform: translateY(-2px);
+    }
+    .module-icon {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px;
+    }
+    .icon-blue { background: #dbeafe; color: #2563eb; }
+    .icon-green { background: #dcfce7; color: #16a34a; }
+    .icon-purple { background: #ede9fe; color: #7c3aed; }
+    .icon-orange { background: #fff7ed; color: #ea580c; }
+    .icon-red { background: #fef2f2; color: #dc2626; }
+    .icon-teal { background: #ccfbf1; color: #0d9488; }
+    .icon-cyan { background: #ecfeff; color: #0891b2; }
+    .icon-indigo { background: #e0e7ff; color: #4f46e5; }
+    .config-block {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px;
+        border-left: 4px solid #3b82f6;
+        margin: 12px 0;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+    }
+    .config-block pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .status-dot {
+        display: inline-block;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .status-ok { background: #22c55e; }
+    .status-warn { background: #f59e0b; }
+    .status-off { background: #ef4444; }
+    .badge-outline {
+        display: inline-block;
+        padding: 2px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #64748b;
+    }
+    .section-divider {
+        border-top: 2px solid #e5e7eb;
+        margin: 2rem 0;
+    }
+    .ai-highlight {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 24px;
+        margin: 16px 0;
+    }
+    .ai-highlight h4 { color: #fff; }
+    .agent-status-panel {
+        background: #1e293b;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+    }
+    .agent-status-panel .online { color: #4ade80; }
+    .agent-status-panel .offline { color: #f87171; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2><i class="bi bi-cpu-fill me-2"></i>功能模块与系统配置</h2>
+        <p class="text-muted mb-0">查看各模块功能说明、前置依赖和配置指南</p>
+    </div>
+    <a href="{{ url_for('ai_attack_page') }}" class="btn btn-lg px-4" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;">
+        <i class="bi bi-robot me-2"></i>AI 攻防实战
+    </a>
+</div>
+
+<!-- ==================== AI 攻防模块（高亮） ==================== -->
+<div class="ai-highlight">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="mb-2"><i class="bi bi-robot me-2"></i>AI 网络安全攻防</h4>
+            <p class="mb-0 opacity-90">
+                连接云端 AI 大脑，自动完成渗透测试全流程。支持自然语言交互，AI 会自动调用扫描工具、
+                生成攻击 payload、分析漏洞并给出修复建议。可对接本地 Agent 客户端实现自动化攻防。
+            </p>
+            <div class="mt-3">
+                <span class="badge bg-light text-dark me-2"><i class="bi bi-check-circle-fill text-success me-1"></i>AI 对话攻防</span>
+                <span class="badge bg-light text-dark me-2"><i class="bi bi-check-circle-fill text-success me-1"></i>自动化扫描</span>
+                <span class="badge bg-light text-dark me-2"><i class="bi bi-check-circle-fill text-success me-1"></i>Payload 生成</span>
+                <span class="badge bg-light text-dark"><i class="bi bi-check-circle-fill text-success me-1"></i>Agent 联动</span>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('ai_attack_page') }}" class="btn btn-light btn-lg">
+                <i class="bi bi-play-fill me-1"></i>立即体验
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== Agent 连接状态 ==================== -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hdd-rack me-2"></i>Agent 客户端连接状态</span>
+        <span class="badge bg-secondary" id="agentBadge">检测中...</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="agent-status-panel" id="agentStatusPanel">
+                    <div><span class="text-muted">$</span> agent status</div>
+                    <div id="agentStatusText">正在检测 Agent 连接...</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="fw-bold">Agent 能力说明</h6>
+                <p class="text-muted small">Agent 客户端运行在目标机器上，通过 WebSocket 连接云端大脑，可以：</p>
+                <ul class="small text-muted">
+                    <li>执行系统命令（白名单安全限制）</li>
+                    <li>运行扫描工具（nmap、dirb 等）</li>
+                    <li>读取文件内容、获取系统信息</li>
+                    <li>模拟键盘鼠标操作</li>
+                    <li>截取屏幕截图</li>
+                </ul>
+                <div class="config-block">
+                    <strong>启动 Agent 客户端：</strong>
+                    <pre># 在目标机器上运行
+cd AI_Assistant
+python agent_client.py
+
+# 或设置环境变量
+set BRAIN_URL=http://你的服务器IP:5000
+python agent_client.py</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 核心模块列表 ==================== -->
+<div class="section-divider"></div>
+<h4 class="mb-3"><i class="bi bi-grid-3x3-gap-fill me-2"></i>核心功能模块</h4>
+
+<div class="row g-4">
+    <!-- DVWA 漏洞练习 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-red me-3"><i class="bi bi-bug-fill"></i></div>
+                    <div>
+                        <h5 class="mb-0">DVWA 漏洞练习</h5>
+                        <small class="text-muted">14个实战漏洞</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    模拟真实Web漏洞环境，涵盖 SQL注入、XSS、CSRF、命令注入、文件包含、文件上传、暴力破解等常见安全漏洞。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-danger">认证类</span>
+                    <span class="badge bg-warning text-dark">注入类</span>
+                    <span class="badge bg-info">XSS类</span>
+                    <span class="badge bg-success">文件类</span>
+                    <span class="badge bg-secondary">客户端</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 无需额外配置，平台内置
+# 数据库已包含预置漏洞数据
+# 直接访问 DVWA 漏洞练习即可开始</pre>
+                </div>
+                <a href="{{ url_for('dvwa_overview') }}" class="btn btn-outline-danger btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i>进入练习
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 扫描工具 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-blue me-3"><i class="bi bi-radar"></i></div>
+                    <div>
+                        <h5 class="mb-0">扫描工具集</h5>
+                        <small class="text-muted">6种扫描引擎</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    端口扫描、网络探测、WAF检测、指纹识别、目录扫描、子域名枚举。基于 Python 多线程引擎。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-primary">端口扫描</span>
+                    <span class="badge bg-info">网络探测</span>
+                    <span class="badge bg-success">WAF检测</span>
+                    <span class="badge bg-warning text-dark">指纹识别</span>
+                    <span class="badge bg-secondary">目录扫描</span>
+                    <span class="badge bg-dark">子域名枚举</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 依赖 Python 标准库（socket, threading）
+# 无需额外安装
+# 注意：扫描需遵守授权范围
+pip install requests  # 可选，增强HTTP扫描</pre>
+                </div>
+                <a href="{{ url_for('port_scan_page') }}" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i>使用扫描工具
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安全靶场 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-purple me-3"><i class="bi bi-crosshair"></i></div>
+                    <div>
+                        <h5 class="mb-0">安全靶场</h5>
+                        <small class="text-muted">6大靶场平台</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    Vulhub、Metasploitable2、WebGoat、Juice Shop、HackTheBox、TryHackMe 等主流靶场入口。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-purple text-white" style="background:#7c3aed">Vulhub</span>
+                    <span class="badge bg-dark">Metasploitable2</span>
+                    <span class="badge bg-success">WebGoat</span>
+                    <span class="badge bg-warning text-dark">Juice Shop</span>
+                    <span class="badge bg-danger">HTB</span>
+                    <span class="badge bg-info">TryHackMe</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 需要 Docker 环境
+docker --version
+
+# Vulhub 靶场
+git clone https://github.com/vulhub/vulhub
+cd vulhub/某个漏洞 && docker-compose up -d
+
+# Metasploitable2
+# 下载 VM 镜像导入 VirtualBox/VMware</pre>
+                </div>
+                <a href="{{ url_for('range_page') }}" class="btn btn-outline-purple btn-sm w-100 mt-2" style="border-color:#7c3aed;color:#7c3aed">
+                    <i class="bi bi-arrow-right me-1"></i>查看靶场
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 攻防 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100 border-primary">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-indigo me-3"><i class="bi bi-robot"></i></div>
+                    <div>
+                        <h5 class="mb-0">AI 智能攻防 <span class="badge bg-primary">NEW</span></h5>
+                        <small class="text-muted">AI 驱动的自动化渗透</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    自然语言描述攻击目标，AI 自动分析、规划攻击路径、调用扫描工具、生成 payload 并执行。支持对接本地 Agent 客户端实现全自动化。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-primary">AI 分析</span>
+                    <span class="badge bg-info">自动化扫描</span>
+                    <span class="badge bg-success">Payload 生成</span>
+                    <span class="badge bg-dark">Agent 联动</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 方式1: 使用云端 AI（推荐）
+# 无需本地配置，使用 DeepSeek API
+
+# 方式2: 使用本地 Ollama
+ollama pull qwen2:7b
+set OLLAMA_BASE_URL=http://localhost:11434/v1
+python agent_client.py  # Agent 联动</pre>
+                </div>
+                <a href="{{ url_for('ai_attack_page') }}" class="btn btn-primary btn-sm w-100 mt-2">
+                    <i class="bi bi-robot me-1"></i>AI 攻防实战
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 报告管理 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-teal me-3"><i class="bi bi-file-earmark-text-fill"></i></div>
+                    <div>
+                        <h5 class="mb-0">报告管理</h5>
+                        <small class="text-muted">扫描报告生成与导出</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    自动生成安全扫描报告，支持 HTML 详情查看和纯文本导出。按风险等级分类（严重/高危/中危/低危），含修复建议。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-danger">严重</span>
+                    <span class="badge bg-warning text-dark">高危</span>
+                    <span class="badge bg-info">中危</span>
+                    <span class="badge bg-success">低危</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 报告由扫描任务自动生成
+# 在扫描历史中点击"生成报告"
+# 支持导出为 .txt 文件</pre>
+                </div>
+                <a href="{{ url_for('report_manage') }}" class="btn btn-outline-teal btn-sm w-100 mt-2" style="border-color:#0d9488;color:#0d9488">
+                    <i class="bi bi-arrow-right me-1"></i>查看报告
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统管理 -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card module-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="module-icon icon-orange me-3"><i class="bi bi-gear-fill"></i></div>
+                    <div>
+                        <h5 class="mb-0">系统管理</h5>
+                        <small class="text-muted">管理员功能</small>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    用户管理（增删改查）、角色权限控制（admin/user/readonly）、操作日志审计、登录安全监控、题目管理。
+                </p>
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark">用户管理</span>
+                    <span class="badge bg-info">角色管理</span>
+                    <span class="badge bg-dark">操作日志</span>
+                    <span class="badge bg-secondary">题目管理</span>
+                </div>
+                <h6 class="fw-bold small mt-3">前置配置</h6>
+                <div class="config-block">
+                    <pre># 管理员登录凭据
+# 默认账号: admin
+# 默认密码: Admin@123456
+# 首次登录后请修改密码</pre>
+                </div>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-warning btn-sm w-100 mt-2">
+                    <i class="bi bi-arrow-right me-1"></i>管理面板
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 环境依赖总览 ==================== -->
+<div class="section-divider"></div>
+<h4 class="mb-3"><i class="bi bi-tools me-2"></i>系统环境依赖</h4>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>组件</th>
+                    <th>用途</th>
+                    <th>安装方式</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Python 3.8+</strong></td>
+                    <td>核心运行环境</td>
+                    <td><code>python --version</code></td>
+                    <td><span class="status-dot status-ok"></span>运行中</td>
+                </tr>
+                <tr>
+                    <td><strong>Flask</strong></td>
+                    <td>Web 框架</td>
+                    <td><code>pip install flask</code></td>
+                    <td><span class="status-dot status-ok"></span>已安装</td>
+                </tr>
+                <tr>
+                    <td><strong>MySQL 8.0+</strong></td>
+                    <td>数据库存储</td>
+                    <td><code>docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql:8</code></td>
+                    <td><span class="status-dot status-ok"></span>已连接</td>
+                </tr>
+                <tr>
+                    <td><strong>PyMySQL</strong></td>
+                    <td>数据库驱动</td>
+                    <td><code>pip install pymysql</code></td>
+                    <td><span class="status-dot status-ok"></span>已安装</td>
+                </tr>
+                <tr>
+                    <td><strong>DeepSeek API</strong></td>
+                    <td>AI 攻防大脑（可选）</td>
+                    <td>设置环境变量 <code>DEEPSEEK_API_KEY</code></td>
+                    <td><span class="status-dot status-warn"></span>需配置</td>
+                </tr>
+                <tr>
+                    <td><strong>Ollama</strong></td>
+                    <td>本地 AI 模型（可选）</td>
+                    <td><a href="https://ollama.com" target="_blank">ollama.com</a> 下载安装</td>
+                    <td><span class="status-dot status-off"></span>需安装</td>
+                </tr>
+                <tr>
+                    <td><strong>Docker</strong></td>
+                    <td>靶场容器化部署（可选）</td>
+                    <td><a href="https://docker.com" target="_blank">docker.com</a> 下载安装</td>
+                    <td><span class="status-dot status-off"></span>需安装</td>
+                </tr>
+                <tr>
+                    <td><strong>requests</strong></td>
+                    <td>HTTP 请求库</td>
+                    <td><code>pip install requests</code></td>
+                    <td><span class="status-dot status-ok"></span>已安装</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== 部署架构 ==================== -->
+<div class="section-divider"></div>
+<h4 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>系统架构</h4>
+
+<div class="card">
+    <div class="card-body">
+        <pre class="mb-0" style="background:#1e293b;color:#e2e8f0;border-radius:10px;padding:16px;font-size:13px;">
+┌──────────────────────────────────────────────────────────┐
+│                    <span style="color:#60a5fa">用户浏览器 / 移动端</span>                      │
+└──────────────┬────────────────────┬──────────────────────┘
+               │                    │
+               ▼                    ▼
+┌──────────────────────┐  ┌──────────────────────────┐
+│   <span style="color:#f59e0b">NetSec 平台 (:5100)</span>  │  │  <span style="color:#a78bfa">云端大脑 Brain (:5000)</span>  │
+│  • Web安全培训        │  │  • AI对话 & 任务分发      │
+│  • DVWA漏洞练习       │  │  • Agent WebSocket 管理   │
+│  • 扫描工具集         │  │  • QQ/微信/Telegram接入   │
+│  • 报告管理           │  │  • 模型路由(DeepSeek/Ollama)│
+│  • AI攻防模块 ────────┼──│                           │
+└──────────┬───────────┘  └────────────┬──────────────┘
+           │                           │
+           ▼                           ▼ WebSocket
+┌──────────────────┐         ┌──────────────────────┐
+│   <span style="color:#34d399">MySQL 数据库</span>      │         │  <span style="color:#f472b6">Agent 客户端</span>          │
+│  • 用户 & 权限     │         │  • 系统命令执行        │
+│  • 漏洞数据        │         │  • 扫描工具代理        │
+│  • 扫描结果        │         │  • 截图 & 文件操作     │
+│  • 操作日志        │         │  • 键盘鼠标模拟        │
+└──────────────────┘         └──────────────────────┘
+        </pre>
+        <p class="text-muted small mt-2 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            NetSec 平台内置 AI 攻防模块，可通过 API 调用云端大脑的 DeepSeek/Ollama 模型。
+            Agent 客户端部署在目标机器上，接收指令自动执行渗透测试操作。
+        </p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// 检测 Agent 连接状态
+function checkAgentStatus() {
+    fetch('{{ url_for("ai_attack_page") }}'.replace('/ai-attack', '/api/ai-attack/agent-status'))
+        .then(r => r.json())
+        .then(data => {
+            const panel = document.getElementById('agentStatusText');
+            const badge = document.getElementById('agentBadge');
+            if (data.agents && data.agents.length > 0) {
+                panel.innerHTML = data.agents.map(a =>
+                    '<div class="online">[ONLINE] ' + a.name + ' (' + a.hostname + ')</div>'
+                ).join('');
+                badge.textContent = data.agents.length + ' 台在线';
+                badge.className = 'badge bg-success';
+            } else {
+                panel.innerHTML = '<div class="offline">[OFFLINE] 无 Agent 客户端连接</div>' +
+                    '<div class="text-muted mt-2">启动 agent_client.py 即可连接</div>';
+                badge.textContent = '无连接';
+                badge.className = 'badge bg-secondary';
+            }
+        })
+        .catch(() => {
+            document.getElementById('agentStatusText').innerHTML =
+                '<div class="offline">[ERROR] 云端大脑未运行</div>';
+            document.getElementById('agentBadge').textContent = '不可用';
+            document.getElementById('agentBadge').className = 'badge bg-danger';
+        });
+}
+
+// 定期检测
+checkAgentStatus();
+setInterval(checkAgentStatus, 15000);
+</script>
+{% endblock %}

@@ -57,6 +57,7 @@ PORT = int(os.environ.get("PORT", "5050"))
 
 # ==================== 初始化 AI 模块 ====================
 
+import config  # noqa: F401 — 加载 .env
 from model_router import ModelRouter
 from memory import MemoryStore
 from actions import ComputerActions

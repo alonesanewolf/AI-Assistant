@@ -28,6 +28,8 @@ from pathlib import Path
 
 import socketio
 
+import config  # noqa: F401 — 加载 .env
+
 # ==================== Windows 编码修复 ====================
 if sys.platform == "win32":
     try:
