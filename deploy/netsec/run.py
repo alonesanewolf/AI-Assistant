@@ -24,6 +24,7 @@ from flask import (
     Response,
 )
 
+from werkzeug.exceptions import HTTPException
 # 导入扫描核心类
 from NetSecAssistant import NetSecAssistant
 import network_scan
@@ -83,6 +84,8 @@ app = Flask(
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-me")
 app.permanent_session_lifetime = timedelta(hours=8)
+app.config["SESSION_COOKIE_PATH"] = APPLICATION_ROOT if APPLICATION_ROOT else "/"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # =========================
 # 全局错误处理 + 日志
@@ -126,7 +129,11 @@ def internal_error(e):
 @app.errorhandler(Exception)
 def handle_exception(e):
     """捕获所有未处理异常"""
+    # HTTP 异常（404等）交给 Flask 默认处理，不要变成 500
+    if isinstance(e, HTTPException):
+        return e
     tb = _traceback.format_exc()
+
     app_logger.error(f"未捕获异常: {type(e).__name__}: {e}\n{tb}")
     # 尝试回滚数据库
     try:
@@ -144,9 +151,8 @@ def handle_exception(e):
     ), 500
 
 
-# SCRIPT_NAME 用于 url_for 生成带前缀的 URL
-if APPLICATION_ROOT:
-    app.config["APPLICATION_ROOT"] = APPLICATION_ROOT
+# SCRIPT_NAME 通过 ScriptNameMiddleware 设置，不再重复设置 APPLICATION_ROOT
+# （两者同时设置会导致 url_for 生成双倍前缀，如 /netsec/netsec/login）
 
 
 class ScriptNameMiddleware:
@@ -338,7 +344,7 @@ def admin_required(view_func):
             return redirect(url_for("login"))
         if session.get("role_key") != "admin":
             flash("需要管理员权限才能访问此页面。", "error")
-            return redirect(url_for("index"))
+            return redirect(url_for("range_page"))
         return view_func(*args, **kwargs)
     return wrapper
 
@@ -487,7 +493,8 @@ def clear_attempts(ip):
 
 
 def build_text_captcha():
-    code = "".join(random.choices("23456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
+    # 避免混淆字符：无 O/0, I/1/L, S/5, B/8, G/6, Z/2, Q
+    code = "".join(random.choices("ABCDEFHJKLMNPRTUVWXY346789", k=4))
     session["captcha_code"] = code
     return code
 
@@ -750,7 +757,7 @@ def login():
 
         record_login_history(username, 1, ip)
         record_operation_log(username, "用户登录", "POST", "/login", result=1)
-        return redirect(url_for("index"))
+        return redirect(url_for("range_page"))
 
     return render_login_page(locked=locked, remaining_minutes=remaining_minutes)
 
@@ -762,15 +769,7 @@ def login():
 @app.route("/index")
 @login_required
 def index():
-    user_id = session.get("user_id")
-    user_status = get_user_status(user_id)
-    return render_template(
-        "index.html",
-        display_name=session.get("display_name", "用户"),
-        login_time=session.get("login_time", "-"),
-        role_key=session.get("role_key", "user"),
-        user_status=user_status,
-    )
+    return redirect(url_for('range_page'))
 
 
 # =========================
@@ -1125,6 +1124,103 @@ def subdomain_enum_page():
         return render_template("subdomain_enum.html", results=None, error=str(e))
 
     return render_template("subdomain_enum.html", results=valid_subs, error=None)
+
+
+# =========================
+# 三级安全扫描 (低/中/高)
+# =========================
+
+from security_scan_levels import (
+    create_scan_task, get_task_status, get_task_result,
+    get_level_config, SCAN_LEVELS,
+)
+
+
+@app.route("/scan/security-scan")
+@login_required
+def security_scan_page():
+    """三级安全扫描页面"""
+    levels = {
+        "low": get_level_config("low"),
+        "medium": get_level_config("medium"),
+        "high": get_level_config("high"),
+    }
+    return render_template("security_scan.html", levels=levels)
+
+
+@app.route("/api/security-scan/start", methods=["POST"])
+@login_required
+def api_start_scan():
+    """启动安全扫描任务"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "缺少请求数据"}), 400
+
+    target = data.get("target", "").strip()
+    level = data.get("level", "low").strip()
+
+    if not target:
+        return jsonify({"success": False, "error": "请输入目标地址"}), 400
+
+    if level not in SCAN_LEVELS:
+        return jsonify({"success": False, "error": f"无效的扫描等级: {level}，可选: low/medium/high"}), 400
+
+    # 简单验证目标格式
+    import re as _re_scan
+    # 允许 IP、域名、带协议的 URL
+    if not _re_scan.match(r'^[\w\-\.:]+$', target.replace("http://", "").replace("https://", "").split("/")[0]):
+        return jsonify({"success": False, "error": "目标地址格式无效"}), 400
+
+    try:
+        task = create_scan_task(target, level)
+        return jsonify({
+            "success": True,
+            "task_id": task.task_id,
+            "level": level,
+            "level_name": task.config["name"],
+            "estimated_time": task.config["estimated_time"],
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"启动扫描失败: {e}"}), 500
+
+
+@app.route("/api/security-scan/status/<task_id>")
+@login_required
+def api_scan_status(task_id):
+    """获取扫描任务状态"""
+    status = get_task_status(task_id)
+    if not status:
+        return jsonify({"error": "任务不存在"}), 404
+    return jsonify(status)
+
+
+@app.route("/api/security-scan/result/<task_id>")
+@login_required
+def api_scan_result(task_id):
+    """获取扫描结果"""
+    result = get_task_result(task_id)
+    if not result:
+        # 可能是还在运行中
+        status = get_task_status(task_id)
+        if status and status["status"] == "running":
+            return jsonify({
+                "success": False,
+                "error": "扫描尚未完成",
+                "status": "running",
+                "progress": status["progress"],
+            }), 202
+        return jsonify({"error": "任务不存在或未完成"}), 404
+    return jsonify({"success": True, "result": result})
+
+
+@app.route("/api/security-scan/levels")
+@login_required
+def api_scan_levels():
+    """获取所有扫描等级配置"""
+    levels = {}
+    for key in ["low", "medium", "high"]:
+        levels[key] = get_level_config(key)
+    return jsonify({"levels": levels})
 
 
 # =========================

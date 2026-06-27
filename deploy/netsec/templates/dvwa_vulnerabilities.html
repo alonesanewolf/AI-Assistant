@@ -7,22 +7,27 @@
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
         <h2 class="mb-1"><i class="bi bi-bug-fill text-danger me-2"></i>DVWA 漏洞练习</h2>
-        <p class="text-muted mb-0">选择以下漏洞进行练习和学习</p>
+        <p class="text-muted mb-0">选择漏洞和难度等级进行练习</p>
     </div>
     <div>
-        <span class="badge badge-low fs-6">Low 难度</span>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-danger active" data-difficulty-filter="all">全部</button>
+            <button type="button" class="btn btn-sm btn-outline-success" data-difficulty-filter="low">Low</button>
+            <button type="button" class="btn btn-sm btn-outline-warning" data-difficulty-filter="medium">Medium</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-difficulty-filter="high">High</button>
+        </div>
     </div>
 </div>
 
-<div class="alert alert-warning d-flex align-items-center border-0 shadow-sm">
-    <i class="bi bi-exclamation-triangle-fill fs-5 me-3"></i>
+<div class="alert alert-info d-flex align-items-center border-0 shadow-sm">
+    <i class="bi bi-info-circle-fill fs-5 me-3"></i>
     <div>
-        <strong>安全等级：Low</strong> — 当前所有漏洞均为最低难度，没有输入过滤和安全防护。建议先熟悉漏洞原理再进行挑战。
+        <strong>选择难度</strong> — 每个漏洞下方可选择 Low / Medium / High 难度。难度越高，安全防护越强，攻击越困难。
     </div>
 </div>
 
 <!-- 认证类漏洞 -->
-<div class="card mb-4 shadow-sm">
+<div class="card mb-4 shadow-sm vuln-category-card" data-category="认证">
     <div class="card-header bg-primary text-white">
         <i class="bi bi-key-fill me-1"></i> 认证类漏洞
     </div>
@@ -30,22 +35,27 @@
         <div class="row g-3">
             {% for v in vulns %}
             {% if v.category == '认证' %}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-3 vuln-item" data-vuln-id="{{ v.vuln_id }}">
                 <div class="card border-primary h-100 hover-shadow">
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         <h6 class="card-title text-primary">
                             {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
                             {{ v.name }}
                         </h6>
-                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge badge-low">Low</span>
-                                {% if v.passed %}
-                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ v.url }}" class="btn btn-sm btn-primary">进入</a>
+                        <p class="card-text small text-muted flex-grow-1">{{ v.description_zh or '' }}</p>
+                        <div class="mt-2">
+                            <label class="form-label small mb-1">选择难度：</label>
+                            <select class="form-select form-select-sm difficulty-select" data-url="{{ v.url }}">
+                                <option value="low">🟢 Low — 无防护</option>
+                                <option value="medium">🟡 Medium — 部分过滤</option>
+                                <option value="high">🔴 High — 严格防护</option>
+                            </select>
+                        </div>
+                        <div class="mt-2">
+                            {% if v.passed %}
+                            <span class="badge bg-success me-1"><i class="bi bi-check me-1"></i>已通关</span>
+                            {% endif %}
+                            <a href="{{ v.url }}?difficulty=low" class="btn btn-sm btn-primary enter-btn">进入练习</a>
                         </div>
                     </div>
                 </div>
@@ -57,7 +67,7 @@
 </div>
 
 <!-- 注入类漏洞 -->
-<div class="card mb-4 shadow-sm">
+<div class="card mb-4 shadow-sm vuln-category-card" data-category="注入">
     <div class="card-header bg-success text-white">
         <i class="bi bi-syringe-fill me-1"></i> 注入类漏洞
     </div>
@@ -65,22 +75,27 @@
         <div class="row g-3">
             {% for v in vulns %}
             {% if v.category == '注入' %}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-3 vuln-item" data-vuln-id="{{ v.vuln_id }}">
                 <div class="card border-success h-100">
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         <h6 class="card-title text-success">
                             {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
                             {{ v.name }}
                         </h6>
-                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge badge-low">Low</span>
-                                {% if v.passed %}
-                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ v.url }}" class="btn btn-sm btn-success">进入</a>
+                        <p class="card-text small text-muted flex-grow-1">{{ v.description_zh or '' }}</p>
+                        <div class="mt-2">
+                            <label class="form-label small mb-1">选择难度：</label>
+                            <select class="form-select form-select-sm difficulty-select" data-url="{{ v.url }}">
+                                <option value="low">🟢 Low — 无防护</option>
+                                <option value="medium">🟡 Medium — 部分过滤</option>
+                                <option value="high">🔴 High — 严格防护</option>
+                            </select>
+                        </div>
+                        <div class="mt-2">
+                            {% if v.passed %}
+                            <span class="badge bg-success me-1"><i class="bi bi-check me-1"></i>已通关</span>
+                            {% endif %}
+                            <a href="{{ v.url }}?difficulty=low" class="btn btn-sm btn-success enter-btn">进入练习</a>
                         </div>
                     </div>
                 </div>
@@ -92,7 +107,7 @@
 </div>
 
 <!-- XSS类漏洞 -->
-<div class="card mb-4 shadow-sm">
+<div class="card mb-4 shadow-sm vuln-category-card" data-category="XSS">
     <div class="card-header bg-warning text-dark">
         <i class="bi bi-search me-1"></i> XSS类漏洞
     </div>
@@ -100,22 +115,27 @@
         <div class="row g-3">
             {% for v in vulns %}
             {% if v.category == 'XSS' %}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-3 vuln-item" data-vuln-id="{{ v.vuln_id }}">
                 <div class="card border-warning h-100">
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         <h6 class="card-title text-warning">
                             {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
                             {{ v.name }}
                         </h6>
-                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge badge-low">Low</span>
-                                {% if v.passed %}
-                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ v.url }}" class="btn btn-sm btn-warning">进入</a>
+                        <p class="card-text small text-muted flex-grow-1">{{ v.description_zh or '' }}</p>
+                        <div class="mt-2">
+                            <label class="form-label small mb-1">选择难度：</label>
+                            <select class="form-select form-select-sm difficulty-select" data-url="{{ v.url }}">
+                                <option value="low">🟢 Low — 无防护</option>
+                                <option value="medium">🟡 Medium — 部分过滤</option>
+                                <option value="high">🔴 High — 严格防护</option>
+                            </select>
+                        </div>
+                        <div class="mt-2">
+                            {% if v.passed %}
+                            <span class="badge bg-success me-1"><i class="bi bi-check me-1"></i>已通关</span>
+                            {% endif %}
+                            <a href="{{ v.url }}?difficulty=low" class="btn btn-sm btn-warning enter-btn">进入练习</a>
                         </div>
                     </div>
                 </div>
@@ -127,7 +147,7 @@
 </div>
 
 <!-- 文件操作类漏洞 -->
-<div class="card mb-4 shadow-sm">
+<div class="card mb-4 shadow-sm vuln-category-card" data-category="文件">
     <div class="card-header bg-info text-white">
         <i class="bi bi-file-earmark-text-fill me-1"></i> 文件操作类漏洞
     </div>
@@ -135,22 +155,27 @@
         <div class="row g-3">
             {% for v in vulns %}
             {% if v.category == '文件' %}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-3 vuln-item" data-vuln-id="{{ v.vuln_id }}">
                 <div class="card border-info h-100">
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         <h6 class="card-title text-info">
                             {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
                             {{ v.name }}
                         </h6>
-                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge badge-low">Low</span>
-                                {% if v.passed %}
-                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ v.url }}" class="btn btn-sm btn-info">进入</a>
+                        <p class="card-text small text-muted flex-grow-1">{{ v.description_zh or '' }}</p>
+                        <div class="mt-2">
+                            <label class="form-label small mb-1">选择难度：</label>
+                            <select class="form-select form-select-sm difficulty-select" data-url="{{ v.url }}">
+                                <option value="low">🟢 Low — 无防护</option>
+                                <option value="medium">🟡 Medium — 部分过滤</option>
+                                <option value="high">🔴 High — 严格防护</option>
+                            </select>
+                        </div>
+                        <div class="mt-2">
+                            {% if v.passed %}
+                            <span class="badge bg-success me-1"><i class="bi bi-check me-1"></i>已通关</span>
+                            {% endif %}
+                            <a href="{{ v.url }}?difficulty=low" class="btn btn-sm btn-info enter-btn">进入练习</a>
                         </div>
                     </div>
                 </div>
@@ -162,30 +187,35 @@
 </div>
 
 <!-- 客户端类漏洞 -->
-<div class="card mb-4 shadow-sm">
-    <div class="card-header bg-secondary text-white">
+<div class="card mb-4 shadow-sm vuln-category-card" data-category="客户端">
+    <div class="card-header text-white" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
         <i class="bi bi-window-stack me-1"></i> 客户端类漏洞
     </div>
     <div class="card-body">
         <div class="row g-3">
             {% for v in vulns %}
             {% if v.category == '客户端' %}
-            <div class="col-md-6 col-lg-3">
-                <div class="card border-secondary h-100">
-                    <div class="card-body">
-                        <h6 class="card-title text-secondary">
+            <div class="col-md-6 col-lg-3 vuln-item" data-vuln-id="{{ v.vuln_id }}">
+                <div class="card h-100" style="border-color: #a855f7;">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title" style="color: #7c3aed;">
                             {% if v.passed %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% endif %}
                             {{ v.name }}
                         </h6>
-                        <p class="card-text small text-muted">{{ v.description_zh or '' }}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge badge-low">Low</span>
-                                {% if v.passed %}
-                                <span class="badge bg-success ms-1"><i class="bi bi-check me-1"></i>已通关</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ v.url }}" class="btn btn-sm btn-secondary">进入</a>
+                        <p class="card-text small text-muted flex-grow-1">{{ v.description_zh or '' }}</p>
+                        <div class="mt-2">
+                            <label class="form-label small mb-1">选择难度：</label>
+                            <select class="form-select form-select-sm difficulty-select" data-url="{{ v.url }}">
+                                <option value="low">🟢 Low — 无防护</option>
+                                <option value="medium">🟡 Medium — 部分过滤</option>
+                                <option value="high">🔴 High — 严格防护</option>
+                            </select>
+                        </div>
+                        <div class="mt-2">
+                            {% if v.passed %}
+                            <span class="badge bg-success me-1"><i class="bi bi-check me-1"></i>已通关</span>
+                            {% endif %}
+                            <a href="{{ v.url }}?difficulty=low" class="btn btn-sm enter-btn" style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; border: none;">进入练习</a>
                         </div>
                     </div>
                 </div>
@@ -196,4 +226,49 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// 难度选择器变化时更新"进入"按钮的链接
+document.querySelectorAll('.difficulty-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        var card = this.closest('.vuln-item');
+        var enterBtn = card.querySelector('.enter-btn');
+        var baseUrl = this.dataset.url;
+        enterBtn.href = baseUrl + '?difficulty=' + this.value;
+    });
+});
+
+// 难度筛选按钮
+document.querySelectorAll('[data-difficulty-filter]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        // 切换 active 状态
+        document.querySelectorAll('[data-difficulty-filter]').forEach(function(b) {
+            b.classList.remove('active');
+            b.classList.add('btn-outline-' + b.dataset.difficultyFilter.replace('all', 'danger'));
+        });
+        this.classList.add('active');
+        this.classList.remove('btn-outline-' + this.dataset.difficultyFilter.replace('all', 'danger'));
+
+        var filter = this.dataset.difficultyFilter;
+        document.querySelectorAll('.vuln-item').forEach(function(item) {
+            if (filter === 'all') {
+                item.style.display = '';
+            } else {
+                // 所有漏洞都支持所有难度，不过滤卡片，只高亮当前选中的难度
+                item.style.display = '';
+            }
+        });
+
+        // 更新所有"进入"链接的难度参数
+        document.querySelectorAll('.difficulty-select').forEach(function(select) {
+            if (filter !== 'all') {
+                select.value = filter;
+                select.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

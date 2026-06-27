@@ -79,8 +79,8 @@ class TaskScheduler:
         try:
             with open(TASKS_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Scheduler] 保存任务失败: {e}")
 
     def _load_tasks(self) -> None:
         """从文件加载任务信息（任务函数需要重新注册）"""
@@ -93,8 +93,8 @@ class TaskScheduler:
                 if item["id"] > self._task_counter:
                     self._task_counter = item["id"]
             print(f"[Scheduler] 从文件加载了 {len(data)} 个任务定义")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Scheduler] 加载任务文件失败: {e}")
 
     # ========== 添加任务 ==========
 

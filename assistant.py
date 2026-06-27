@@ -76,8 +76,7 @@ class Assistant:
         # 搜索模块（带 AI 摘要能力）
         self.search = WebSearch(ai_summarizer=self._ai_summarize_search)
 
-        # 启动调度器
-        self.scheduler.start()
+        # 调度器延迟到 run() 中连接测试通过后启动（避免僵尸线程）
 
     # ==================== AI 对话 ====================
 
@@ -387,8 +386,10 @@ class Assistant:
         # 测试连接
         if not self.test_connection():
             print("\n[错误] API 连接失败，程序退出。")
-            self.scheduler.stop()
             sys.exit(1)
+
+        # 连接测试通过后启动调度器
+        self.scheduler.start()
 
         print("\n开始对话吧！（输入 quit 退出）\n")
 

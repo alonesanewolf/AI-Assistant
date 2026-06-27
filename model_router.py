@@ -22,21 +22,24 @@ import sys
 import time
 from typing import Optional
 
-# ==================== 配置 ====================
+# ==================== 配置（统一从 config.py 读取） ====================
 
-# DeepSeek（从环境变量读取，不要硬编码 Key）
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
-
-# Ollama 本地模型
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2:7b")  # 当前电脑安装: qwen2:7b, qwen2.5:7b
-
-# 备用 API（其他 OpenAI 兼容接口）
-FALLBACK_API_KEY = os.environ.get("FALLBACK_API_KEY", "")
-FALLBACK_BASE_URL = os.environ.get("FALLBACK_BASE_URL", "")
-FALLBACK_MODEL = os.environ.get("FALLBACK_MODEL", "gpt-3.5-turbo")
+try:
+    from config import (
+        DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
+        OLLAMA_BASE_URL, OLLAMA_MODEL,
+        FALLBACK_API_KEY, FALLBACK_BASE_URL, FALLBACK_MODEL,
+    )
+except ImportError:
+    # config.py 不可用时的兜底默认值
+    DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+    OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2:7b")
+    FALLBACK_API_KEY = os.environ.get("FALLBACK_API_KEY", "")
+    FALLBACK_BASE_URL = os.environ.get("FALLBACK_BASE_URL", "")
+    FALLBACK_MODEL = os.environ.get("FALLBACK_MODEL", "gpt-3.5-turbo")
 
 # ==================== 任务类型定义 ====================
 
@@ -85,6 +88,7 @@ class ModelRouter:
         self._check_interval = 60  # 60秒内不重复检查
         self._mode = mode if mode in self.MODES else "local_first"
         self._local_models = []  # 缓存本地模型列表
+        self.last_model_used = ""  # 最近实际使用的模型名（审计日志用）
 
     # ==================== 模式管理 ====================
 
@@ -274,6 +278,7 @@ class ModelRouter:
             self._available[key] = True
             self._last_check[key] = time.time()
 
+            self.last_model_used = actual_model  # 记录实际使用的模型
             source_map = {"deepseek": "云端", "ollama": "本地", "fallback": "备用"}
             return {
                 "content": content,

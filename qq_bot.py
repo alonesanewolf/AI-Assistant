@@ -139,11 +139,16 @@ class QQBot:
             except json.JSONDecodeError:
                 pass
 
+        _last_error_time = [0]  # 用于节流错误日志
+
         def on_error(ws, error):
-            print(f"[QQ] WebSocket 错误: {error}")
+            now = time.time()
+            if now - _last_error_time[0] > 300:
+                print(f"[QQ] WebSocket 错误: {error}")
+                _last_error_time[0] = now
 
         def on_close(ws, close_status_code, close_msg):
-            print(f"[QQ] WebSocket 断开 (code={close_status_code})")
+            pass  # 不打印断开日志，避免刷屏。由重连逻辑统一处理
 
         def on_open(ws):
             print(f"[QQ] 已连接到 OneBot: {self.ws_url}")
@@ -159,22 +164,34 @@ class QQBot:
                 )
                 self._ws.run_forever(ping_interval=30, ping_timeout=10)
             except Exception as e:
-                print(f"[QQ] 连接失败: {e}，10秒后重试...")
-                time.sleep(10)
+                self._retry_count = getattr(self, '_retry_count', 0) + 1
+                if self._retry_count <= 3 or self._retry_count % 60 == 0:
+                    print(f"[QQ] 连接失败 (第{self._retry_count}次): {e}，60秒后重试...")
+                # 指数退避: 10s -> 60s，降低 CPU 空耗
+                delay = 60 if self._retry_count > 10 else 10
+                time.sleep(delay)
 
     # ---- 消息发送 ----
+
+    def _to_int_id(self, raw_id: str) -> int:
+        """安全转换 QQ 号（支持纯数字 ID 和 str ID）"""
+        try:
+            return int(raw_id)
+        except (ValueError, TypeError):
+            # 字符串 ID（如负值机器人）使用 hash
+            return abs(hash(raw_id)) % (10 ** 10)
 
     def send_private_msg(self, user_id: str, text: str) -> bool:
         """发送私聊消息（需要正向 WS 连接）"""
         return self._send_api("send_private_msg", {
-            "user_id": int(user_id),
+            "user_id": self._to_int_id(user_id),
             "message": text,
         })
 
     def send_group_msg(self, group_id: str, text: str) -> bool:
         """发送群聊消息"""
         return self._send_api("send_group_msg", {
-            "group_id": int(group_id),
+            "group_id": self._to_int_id(group_id),
             "message": text,
         })
 

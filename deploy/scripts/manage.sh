@@ -23,7 +23,7 @@ show_banner() {
 }
 
 show_help() {
-    echo "用法: $0 {start|stop|restart|status|logs|test|quick-deploy}"
+    echo "用法: $0 {start|stop|restart|status|logs|test|quick-deploy|backup|restore|validate}"
     echo ""
     echo "  start        启动所有服务"
     echo "  stop         停止所有服务"
@@ -31,6 +31,9 @@ show_help() {
     echo "  status       查看服务状态"
     echo "  logs         查看 Web 服务日志"
     echo "  test         运行健康检查"
+    echo "  backup       备份核心配置文件"
+    echo "  restore      恢复最近的备份"
+    echo "  validate     运行部署完整性验证"
     echo "  quick-deploy 快速部署（安装 Nginx + Python 依赖并启动）"
 }
 
@@ -217,6 +220,86 @@ quick_deploy() {
     echo "访问: http://$(curl -s ifconfig.me)/"
 }
 
+backup_configs() {
+    echo -e "${YELLOW}备份核心配置...${NC}"
+    BACKUP_DIR="/opt/ai_assistant/backups"
+    BACKUP_NAME="backup_$(date +%Y%m%d_%H%M%S)"
+    BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
+    mkdir -p "$BACKUP_PATH" 2>/dev/null || { echo -e "${RED}✗ 无法创建备份目录${NC}"; return 1; }
+
+    # 备份配置文件
+    local items=(
+        "/opt/ai_assistant/.env"
+        "/etc/nginx/conf.d/ai_assistant.conf"
+        "/etc/systemd/system/ai_assistant.service"
+        "/etc/systemd/system/netsec_assistant.service"
+        "/etc/systemd/system/ai_brain.service"
+    )
+
+    local count=0
+    for item in "${items[@]}"; do
+        if [ -f "$item" ]; then
+            cp "$item" "$BACKUP_PATH/" 2>/dev/null && count=$((count+1))
+            echo "  ✓ $(basename "$item")"
+        else
+            echo "  - $(basename "$item") (不存在，跳过)"
+        fi
+    done
+
+    # 备份数据库（如果可用）
+    if command -v mysqldump &>/dev/null && [ -n "${MYSQL_PASSWORD:-}" ]; then
+        echo -n "  备份数据库..."
+        if mysqldump -u root -p"${MYSQL_PASSWORD}" netsec_platform > "$BACKUP_PATH/netsec_platform.sql" 2>/dev/null; then
+            echo " ✓"
+            count=$((count+1))
+        else
+            echo " ✗"
+        fi
+    fi
+
+    # 创建链接到最新备份
+    rm -f "${BACKUP_DIR}/latest" 2>/dev/null
+    ln -sf "$BACKUP_PATH" "${BACKUP_DIR}/latest"
+
+    echo -e "${GREEN}✓ 备份完成: ${BACKUP_PATH} (${count} 项)${NC}"
+}
+
+restore_backup() {
+    echo -e "${YELLOW}恢复最近备份...${NC}"
+    BACKUP_DIR="/opt/ai_assistant/backups"
+    
+    if [ ! -L "${BACKUP_DIR}/latest" ] && [ ! -d "${BACKUP_DIR}/latest" ]; then
+        echo -e "${RED}✗ 未找到备份，请先执行 backup${NC}"
+        return 1
+    fi
+
+    LATEST=$(readlink -f "${BACKUP_DIR}/latest" 2>/dev/null || echo "${BACKUP_DIR}/latest")
+    if [ ! -d "$LATEST" ]; then
+        echo -e "${RED}✗ 备份目录无效: ${LATEST}${NC}"
+        return 1
+    fi
+
+    echo "  恢复来源: $LATEST"
+    
+    # 恢复配置文件
+    [ -f "$LATEST/.env" ] && cp "$LATEST/.env" /opt/ai_assistant/.env && echo "  ✓ .env"
+    [ -f "$LATEST/ai_assistant.conf" ] && cp "$LATEST/ai_assistant.conf" /etc/nginx/conf.d/ && nginx -t && nginx -s reload && echo "  ✓ Nginx config"
+    [ -f "$LATEST/ai_assistant.service" ] && cp "$LATEST/ai_assistant.service" /etc/systemd/system/ && echo "  ✓ ai_assistant.service"
+    
+    systemctl daemon-reload
+    echo -e "${GREEN}✓ 恢复完成，建议重启服务${NC}"
+}
+
+run_validate() {
+    VALIDATE_SCRIPT="$(cd "$(dirname "$0")" && pwd)/validate.sh"
+    if [ -f "$VALIDATE_SCRIPT" ]; then
+        bash "$VALIDATE_SCRIPT"
+    else
+        echo -e "${RED}✗ validate.sh 未找到${NC}"
+        echo "请从项目根目录执行或检查 deploy/scripts/validate.sh 是否存在"
+    fi
+}
+
 # ==================== 主逻辑 ====================
 show_banner
 
@@ -240,6 +323,15 @@ case "${1:-status}" in
         ;;
     test)
         run_test
+        ;;
+    backup)
+        backup_configs
+        ;;
+    restore)
+        restore_backup
+        ;;
+    validate)
+        run_validate
         ;;
     quick-deploy)
         quick_deploy

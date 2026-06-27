@@ -36,6 +36,7 @@ from flask_socketio import SocketIO, emit
 from model_router import ModelRouter
 from actions import ComputerActions
 from memory import MemoryStore
+from search import WebSearch
 from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_BASE_URL,
@@ -58,7 +59,7 @@ ENABLE_BRAIN_AGENT = os.environ.get("ENABLE_BRAIN_AGENT", "true").lower() == "tr
 
 # ==================== Flask + SocketIO ====================
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(24).hex()
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", os.urandom(24).hex())
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # ==================== 初始化模块 ====================
@@ -66,6 +67,34 @@ ROUTER_MODE = os.environ.get("ROUTER_MODE", "local_first")  # local_first / clou
 model_router = ModelRouter(mode=ROUTER_MODE)
 actions = ComputerActions()
 memory = MemoryStore()
+# 搜索模块（带 AI 摘要能力，与 assistant.py 保持一致）
+search = WebSearch(ai_summarizer=lambda q, items: _ai_summarize_search(q, items, model_router))
+
+
+def _ai_summarize_search(query: str, items: list, router) -> str:
+    """用 AI 对搜索结果做智能摘要（供 WebSearch 回调使用）"""
+    if not items or not router:
+        return ""
+    context_parts = []
+    for i, item in enumerate(items[:3], 1):
+        context_parts.append(
+            f"{i}. 标题: {item['title']}\n"
+            f"   摘要: {item['snippet']}\n"
+            f"   链接: {item['link']}"
+        )
+    context = "\n\n".join(context_parts)
+    prompt = (
+        f"用户搜索了: \"{query}\"\n\n"
+        f"以下是搜索结果:\n{context}\n\n"
+        f"请用 2-3 句话简洁地总结这些搜索结果的核心内容。用中文回复。"
+    )
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        summary = router.chat(messages, temperature=0.3)
+        return f"📊 搜索结果摘要:\n{summary}"
+    except Exception:
+        return ""
+
 
 # 对话历史
 conversations: dict = {}  # session_id -> [messages]
@@ -264,9 +293,7 @@ def execute_command(cmd_type: str, params: str) -> str:
 
     elif cmd_type == "search":
         try:
-            from search import WebSearch
-            ws = WebSearch()
-            return ws.search_and_summarize(params)
+            return search.search_and_summarize(params)
         except ImportError:
             return f"搜索 '{params}' - 搜索模块未加载"
 

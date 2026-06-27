@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - DOM型XSS{% endblock %}
+{% block title %}漏洞练习 - XSS (DOM) DOM 型跨站脚本{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-code-square text-warning me-2"></i>DOM型XSS</h2>
+        <h2 class="mb-1"><i class="bi bi-code-square text-warning me-2"></i>XSS (DOM) DOM 型跨站脚本</h2>
         <p class="text-muted mb-0">DOM-based XSS - 通过DOM操作注入恶意代码</p>
     </div>
     <div>
@@ -54,7 +54,49 @@
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <!-- 快速上手 -->
+        <div class="card mt-3 border-warning border-2">
+            <div class="card-header bg-warning bg-gradient text-dark py-2">
+                <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：DOM 型 XSS 前端注入</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-cursor"></i></div>
+                            <h6 class="fw-bold">第1步：选择自定义</h6>
+                            <p class="small mb-0 mt-2">下拉框选"自定义..."</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border">
+                                <small class="fw-bold text-warning">自定义...</small>
+                            </div>
+                            <small class="text-muted d-block mt-2">激活自定义文本输入框</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-code-slash"></i></div>
+                            <h6 class="fw-bold">第2步：注入 Payload</h6>
+                            <p class="small mb-2">输入 XSS 代码到自定义文本框</p>
+                            <code class="d-block bg-dark text-light p-2 rounded mt-2 small">&lt;img src=x onerror=alert(1)&gt;</code>
+                            <small class="text-danger d-block mt-2">👉 innerHTML 直接插入 DOM！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                            <h6 class="fw-bold">第3步：点击更新</h6>
+                            <p class="small mb-2">点击"更新"按钮触发</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border border-warning">
+                                <small class="text-success fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>浏览器弹出 alert</small>
+                            </div>
+                            <small class="text-success d-block mt-2 fw-bold">看到弹窗 = DOM XSS 成功！</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
             <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> 漏洞代码</div>
             <div class="card-body">
                 <pre class="bg-light p-3 rounded border mb-0"><code>// 漏洞代码：直接使用innerHTML插入用户输入
@@ -121,4 +163,22 @@ window.onload = function() {
     }
 };
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

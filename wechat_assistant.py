@@ -135,13 +135,13 @@ def parse_and_execute(reply: str):
     result = None
     try:
         if cmd_type == "screenshot":
-            result = actions.screenshot(); stats["cmds"] += 1
+            result = actions.take_screenshot(params if params else None); stats["cmds"] += 1
         elif cmd_type == "open_url":
             result = actions.open_url(params); stats["cmds"] += 1
         elif cmd_type == "open_program":
             result = actions.open_program(params); stats["cmds"] += 1
         elif cmd_type == "sysinfo":
-            result = actions.system_info(); stats["cmds"] += 1
+            result = actions.get_system_info(); stats["cmds"] += 1
         elif cmd_type == "volume":
             result = actions.volume_control(params); stats["cmds"] += 1
         elif cmd_type == "lock_screen":
@@ -157,7 +157,8 @@ def parse_and_execute(reply: str):
         elif cmd_type == "list_files":
             result = actions.list_files(params); stats["cmds"] += 1
         elif cmd_type == "create_file":
-            result = actions.create_file(params); stats["cmds"] += 1
+            p = params.split("|", 1)
+            result = actions.create_file(p[0].strip(), p[1] if len(p) > 1 else ""); stats["cmds"] += 1
         elif cmd_type == "read_file":
             result = actions.read_file(params); stats["cmds"] += 1
         elif cmd_type == "press_keys":

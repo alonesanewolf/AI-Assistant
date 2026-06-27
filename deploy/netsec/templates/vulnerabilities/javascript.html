@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - JavaScript漏洞{% endblock %}
+{% block title %}漏洞练习 - JavaScript 前端 JS 安全{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-filetype-js text-secondary me-2"></i>JavaScript漏洞</h2>
+        <h2 class="mb-1"><i class="bi bi-filetype-js text-secondary me-2"></i>JavaScript 前端 JS 安全</h2>
         <p class="text-muted mb-0">JavaScript Vulnerabilities - 前端代码存在安全缺陷</p>
     </div>
     <div>
@@ -42,7 +42,49 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mb-4">
+        <!-- 快速上手 -->
+        <div class="card mt-3 border-secondary border-2">
+            <div class="card-header bg-secondary bg-gradient text-white py-2">
+                <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：分析 JS 源码破解 Token</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-filetype-js"></i></div>
+                            <h6 class="fw-bold">第1步：查看源码</h6>
+                            <p class="small mb-0 mt-2">按 F12 查看页面 JavaScript</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border">
+                                <small class="fw-bold text-secondary">搜索 SaltForToken_v1</small>
+                            </div>
+                            <small class="text-muted d-block mt-2">发现硬编码的盐值！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-key"></i></div>
+                            <h6 class="fw-bold">第2步：分析算法</h6>
+                            <p class="small mb-2">Token = 用户名 + 固定盐值</p>
+                            <code class="d-block bg-dark text-light p-2 rounded mt-2 small">admin:SaltForToken_v1</code>
+                            <small class="text-danger d-block mt-2">👉 算法在客户端，任何人都可见！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-secondary bg-opacity-10 rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                            <h6 class="fw-bold">第3步：生成 Token</h6>
+                            <p class="small mb-2">点击"生成Token"按钮验证</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border border-secondary">
+                                <small class="text-success fw-bold"><i class="bi bi-code-slash me-1"></i>admin:demo_hash_1v_TneKroftlaS_nimda</small>
+                            </div>
+                            <small class="text-success d-block mt-2 fw-bold">看懂算法 = 漏洞利用成功！</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
             <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> 漏洞代码分析</div>
             <div class="card-body">
                 <pre class="bg-light p-3 rounded border"><code>// 漏洞1：Token由用户名和固定盐值生成
@@ -115,4 +157,22 @@ function generateToken() {
     document.getElementById("tokenOutput").textContent = username + ":" + token;
 }
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

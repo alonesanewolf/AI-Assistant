@@ -39,13 +39,15 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 import config  # noqa: F401 — 加载 .env
 from model_router import ModelRouter
+from audit import log_command_sent, log_command_result, log_agent_event
+from audit import log_ai_chat, log_security, log_system, query_logs, get_stats
 
 # ==================== 配置 ====================
 
-# DeepSeek 配置（从环境变量读取，model_router.py 中已有统一入口）
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+# DeepSeek 配置（从 config.py 统一读取，兜底用环境变量）
+DEEPSEEK_API_KEY = config.DEEPSEEK_API_KEY if hasattr(config, 'DEEPSEEK_API_KEY') else os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = config.DEEPSEEK_BASE_URL if hasattr(config, 'DEEPSEEK_BASE_URL') else os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = config.DEEPSEEK_MODEL if hasattr(config, 'DEEPSEEK_MODEL') else os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 # QQ Bot 配置
 QQ_BOT_ENABLED = os.environ.get("QQ_BOT_ENABLED", "").lower() == "true"
@@ -207,10 +209,33 @@ class RedisQueue:
         return self._use_redis
 
 
+# ==================== 速率限制 ====================
+
+_rate_limit_store: dict = {}  # key -> list of timestamps
+_rate_limit_lock = threading.Lock()
+
+def check_rate_limit(key: str, max_per_minute: int = 30) -> bool:
+    """简单的滑动窗口速率限制，返回 True 表示允许"""
+    if not os.environ.get("RATE_LIMIT_ENABLED", "true").lower() == "true":
+        return True
+    now = time.time()
+    window = 60
+    with _rate_limit_lock:
+        timestamps = _rate_limit_store.get(key, [])
+        # 清理过期时间戳
+        timestamps = [t for t in timestamps if now - t < window]
+        if len(timestamps) >= max_per_minute:
+            _rate_limit_store[key] = timestamps
+            return False
+        timestamps.append(now)
+        _rate_limit_store[key] = timestamps
+    return True
+
+
 # ==================== Flask + SocketIO 初始化 ====================
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(24).hex()
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", os.urandom(24).hex())
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                      max_http_buffer_size=10_000_000,  # 10MB，支持大截图传输
                      ping_timeout=60, ping_interval=25)
@@ -230,7 +255,7 @@ if QQ_BOT_ENABLED:
 wechat_bot = None
 if WECHAT_ENABLED:
     from wechat_bot import WeChatBot
-    wechat_bot = WeChatBot(mode="wecom", webhook_key=WECOM_BOT_KEY)
+    wechat_bot = WeChatBot(mode="wecom_bot", webhook_key=WECOM_BOT_KEY)
 
 # Telegram Bot（如果启用）
 telegram_bot = None
@@ -241,6 +266,10 @@ if TELEGRAM_ENABLED:
 # 存储已连接的 Agent
 connected_agents: dict = {}  # agent_id -> {sid, name, status, ...}
 agents_lock = threading.Lock()
+
+# Agent 系统状态（CPU/内存等，由心跳上报）
+agent_system_stats: dict = {}  # agent_id -> {cpu, mem, uptime, ...}
+stats_lock = threading.Lock()
 
 # 对话历史（按会话存储）
 conversations: dict = {}  # session_id -> [messages]
@@ -301,14 +330,17 @@ SYSTEM_PROMPT = """你是一个云端智能大脑，负责理解用户意图并�
 
 def call_ai(session_id: str, user_message: str, model: str = None) -> str:
     """调用 AI 模型进行对话（支持 DeepSeek + 本地 Ollama）"""
+    update_conversation_activity(session_id)  # 标记活跃时间
+    
     if session_id not in conversations:
         conversations[session_id] = []
 
     history = conversations[session_id]
 
-    # 保留最近 20 轮
+    # 保留最近 20 轮（共 40 条消息 = 20 轮对话）
     if len(history) > 40:
         history = history[-40:]
+        conversations[session_id] = history
 
     messages = [
         {
@@ -359,13 +391,17 @@ def process_user_message(session_id: str, message: str, source: str = "unknown")
         commands = parse_commands(reply)
         clean = clean_reply(reply)
 
+        # 记录 AI 对话
+        log_ai_chat(session_id, source, message, clean,
+                     model=model_router.last_model_used or "")
+
         cmd_info = None
         task_id = None
         if commands:
             cmd_type, cmd_params = commands[0]
             cmd_info = {"type": cmd_type, "params": cmd_params.strip()}
 
-            # 推送到 Redis 队列
+            # 统一推送到队列，由 Worker 线程统一分发给 Agent（避免重复发送）
             task_id = queue.push_task({
                 "command": cmd_type,
                 "params": cmd_params.strip(),
@@ -373,12 +409,9 @@ def process_user_message(session_id: str, message: str, source: str = "unknown")
                 "source": source,
             })
 
-            # 通过 WebSocket 广播给所有 Agent
-            socketio.emit("agent_command", {
-                "task_id": task_id,
-                "command": cmd_type,
-                "params": cmd_params.strip(),
-            }, room="agents")
+            # 审计：指令已入队
+            log_command_sent(task_id, cmd_type, cmd_params.strip(),
+                             source, session_id)
 
         return {
             "reply": clean,
@@ -387,8 +420,11 @@ def process_user_message(session_id: str, message: str, source: str = "unknown")
             "success": True,
         }
     except Exception as e:
+        # 不泄露内部错误详情给用户
+        error_type = type(e).__name__
+        print(f"[Brain] process_user_message 异常: {error_type}: {e}")
         return {
-            "reply": f"[AI服务暂时不可用] {e}",
+            "reply": "[AI服务暂时不可用，请稍后重试]",
             "command": None,
             "task_id": None,
             "success": False,
@@ -971,10 +1007,27 @@ MOBILE_HTML = r"""<!DOCTYPE html>
             agentOnline = agents.length > 0;
             if (agentOnline) {
                 dot.classList.remove('offline');
-                document.getElementById('agentName').textContent = agents[0]?.name || '在线';
+                const first = agents[0];
+                document.getElementById('agentName').textContent = first?.name || '在线';
+                // 显示系统状态
+                if (first?.system) {
+                    document.getElementById('cpuVal').textContent = first.system.cpu + '%';
+                    document.getElementById('memVal').textContent =
+                        first.system.memory_percent + '%';
+                    document.getElementById('cpuVal').className = 'stat-value';
+                    document.getElementById('memVal').className = 'stat-value';
+                    if (first.system.cpu > 80)
+                        document.getElementById('cpuVal').className = 'stat-value warn';
+                    if (first.system.memory_percent > 80)
+                        document.getElementById('memVal').className = 'stat-value warn';
+                }
             } else {
                 dot.classList.add('offline');
                 document.getElementById('agentName').textContent = '无设备在线';
+                document.getElementById('cpuVal').textContent = '--';
+                document.getElementById('memVal').textContent = '--';
+                document.getElementById('cpuVal').className = 'stat-value';
+                document.getElementById('memVal').className = 'stat-value';
             }
         });
 
@@ -1197,13 +1250,20 @@ MOBILE_HTML = r"""<!DOCTYPE html>
         // 刷新状态
         async function refreshStatus() {
             try {
-                const resp = await fetch('/api/health');
+                const resp = await fetch('/api/agent/status');
                 const data = await resp.json();
-                document.getElementById('agentCount').textContent = data.agents;
+                document.getElementById('agentCount').textContent = data.online_count;
                 const dot = document.getElementById('statusDot');
-                agentOnline = data.agents > 0;
+                agentOnline = data.online_count > 0;
                 if (agentOnline) dot.classList.remove('offline');
                 else dot.classList.add('offline');
+
+                // 显示首个 Agent 系统状态
+                if (data.agents && data.agents.length > 0 && data.agents[0].system) {
+                    const sys = data.agents[0].system;
+                    document.getElementById('cpuVal').textContent = sys.cpu + '%';
+                    document.getElementById('memVal').textContent = sys.memory_percent + '%';
+                }
 
                 // 如果自动刷新开着但设备离线了，关掉自动刷新
                 if (!agentOnline && document.getElementById('autoRefreshToggle').checked) {
@@ -1523,6 +1583,9 @@ INDEX_HTML = r"""<!DOCTYPE html>
                 '<div class="agent-card">' +
                 '<div class="name">' + a.name + '</div>' +
                 '<div class="info">ID: ' + a.id + ' | ' + a.status + '</div>' +
+                (a.system ? '<div class="info" style="margin-top:4px">' +
+                 'CPU: ' + (a.system.cpu||0) + '% | 内存: ' +
+                 (a.system.memory_percent||0) + '%</div>' : '') +
                 '</div>'
             ).join('');
         }
@@ -1564,6 +1627,11 @@ def health():
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     """HTTP API 对话接口"""
+    # 速率限制
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+    if not check_rate_limit(f"chat:{client_ip}", max_per_minute=30):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
     data = request.get_json()
     if not data or "message" not in data:
         return jsonify({"error": "缺少 message 字段"}), 400
@@ -1590,6 +1658,11 @@ def api_task_result(task_id):
 @app.route("/api/action", methods=["POST"])
 def api_action():
     """直接发送指令给 Agent（跳过 AI，直达执行）"""
+    # 速率限制
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+    if not check_rate_limit(f"action:{client_ip}", max_per_minute=20):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
     data = request.get_json()
     if not data or "command" not in data:
         return jsonify({"error": "缺少 command 字段"}), 400
@@ -1611,6 +1684,9 @@ def api_action():
         "params": params,
     }, room="agents")
 
+    # 审计：直接快捷操作
+    log_command_sent(task_id, command, params, source="mobile", session_id=session_id)
+
     return jsonify({"task_id": task_id, "command": command, "status": "sent"})
 
 
@@ -1618,6 +1694,62 @@ def api_action():
 def api_models():
     """查询模型状态"""
     return jsonify(model_router.get_status())
+
+
+@app.route("/api/agent/status")
+def api_agent_status():
+    """Agent 实时状态监控（CPU/内存/连接等）"""
+    with agents_lock:
+        agents_list = []
+        for agent_id, info in connected_agents.items():
+            agent_data = {
+                "id": info["id"],
+                "name": info["name"],
+                "status": info["status"],
+                "hostname": info.get("hostname", ""),
+                "connected_at": info.get("connected_at", ""),
+                "last_heartbeat": info.get("last_heartbeat", ""),
+            }
+            with stats_lock:
+                sys_stats = agent_system_stats.get(agent_id)
+                if sys_stats:
+                    agent_data["system"] = sys_stats
+            agents_list.append(agent_data)
+
+    return jsonify({
+        "agents": agents_list,
+        "online_count": len(agents_list),
+        "redis_connected": queue.is_connected,
+        "queue_length": queue.get_queue_length(),
+        "active_sessions": len(conversations),
+    })
+
+
+@app.route("/api/audit/logs")
+def api_audit_logs():
+    """查询审计日志（支持按类型/时间筛选）"""
+    event_type = request.args.get("type", "")
+    limit = min(int(request.args.get("limit", "100")), 500)
+    offset = int(request.args.get("offset", "0"))
+    task_id = request.args.get("task_id", "")
+    hours = min(int(request.args.get("hours", "24")), 720)
+
+    logs = query_logs(
+        event_type=event_type,
+        limit=limit,
+        offset=offset,
+        task_id=task_id,
+        hours=hours,
+    )
+    return jsonify({"logs": logs, "count": len(logs)})
+
+
+@app.route("/api/audit/stats")
+def api_audit_stats():
+    """审计统计信息"""
+    hours = min(int(request.args.get("hours", "24")), 720)
+    stats = get_stats(hours=hours)
+    return jsonify(stats)
 
 
 @app.route("/api/agents")
@@ -1650,6 +1782,11 @@ def api_screenshot():
 @app.route("/api/screenshot/trigger", methods=["POST"])
 def api_screenshot_trigger():
     """触发 Agent 截图并返回结果（同步等待）"""
+    # 速率限制（截图频繁容易打挂 Agent）
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+    if not check_rate_limit(f"screenshot:{client_ip}", max_per_minute=10):
+        return jsonify({"error": "截图请求过于频繁，请稍后再试"}), 429
+
     data = request.get_json() or {}
     task_id = queue.push_task({
         "command": "screenshot",
@@ -1662,6 +1799,12 @@ def api_screenshot_trigger():
         "command": "screenshot",
         "params": "",
     }, room="agents")
+
+    # 审计：截图指令
+    log_command_sent(task_id, "screenshot", "",
+                     source="mobile_screenshot",
+                     session_id=data.get("session_id", "screenshot_trigger"))
+
     return jsonify({"task_id": task_id, "status": "sent"})
 
 
@@ -1756,7 +1899,7 @@ def webhook_wechat():
     def handle():
         result = process_user_message(session_id, user_message, source="wechat")
         # 尝试通过企业微信机器人回复
-        if wechat_bot and wechat_bot.mode == "wecom" and wechat_bot.webhook_url:
+        if wechat_bot and wechat_bot.mode == "wecom_bot" and wechat_bot.webhook_url:
             wechat_bot.send_wecom_text(result["reply"])
         else:
             with replies_lock:
@@ -1787,7 +1930,12 @@ def handle_disconnect():
         to_remove = [aid for aid, info in connected_agents.items() if info.get("sid") == request.sid]
         for aid in to_remove:
             print(f"[Agent] 离线: {aid}")
+            log_agent_event("agent_offline", aid,
+                            connected_agents[aid].get("name", ""))
             del connected_agents[aid]
+            # 清理系统状态
+            with stats_lock:
+                agent_system_stats.pop(aid, None)
 
     broadcast_agent_update()
 
@@ -1811,6 +1959,9 @@ def handle_register(data: dict):
             }
         join_room("agents")
         print(f"[Agent] 上线: {agent_name} ({agent_id})")
+        # 审计
+        log_agent_event("agent_online", agent_id, agent_name,
+                        data.get("hostname", ""))
         emit("registered", {"agent_id": agent_id, "status": "ok"})
 
     elif client_type == "web":
@@ -1840,6 +1991,8 @@ def handle_brain_message(data: dict):
 @socketio.on("agent_result")
 def handle_agent_result(data: dict):
     """Agent 返回指令执行结果"""
+    global latest_screenshot
+
     task_id = data.get("task_id", "")
     result_text = data.get("result", "")
     success = data.get("success", True)
@@ -1848,12 +2001,14 @@ def handle_agent_result(data: dict):
 
     print(f"[结果] 任务 {task_id}: {result_text[:80]}")
 
+    # 审计：指令执行结果
+    log_command_result(task_id, command, result_text, success, agent_id)
+
     # 如果是截图结果，提取 base64 数据
     screenshot_b64 = None
     if command == "screenshot" and result_text.startswith("BASE64_JPEG:"):
         screenshot_b64 = result_text[len("BASE64_JPEG:"):]
         with screenshot_lock:
-            global latest_screenshot
             latest_screenshot = screenshot_b64
         # 通过 Socket 推送截图到所有 Web 客户端
         socketio.emit("screenshot_update", {
@@ -1896,26 +2051,48 @@ def handle_agent_capability(data: dict):
 
 @socketio.on("agent_heartbeat")
 def handle_heartbeat(data: dict):
-    """Agent 心跳"""
+    """Agent 心跳（含系统状态）"""
     agent_id = data.get("agent_id")
     if agent_id:
+        now = datetime.now().isoformat()
         with agents_lock:
             if agent_id in connected_agents:
-                connected_agents[agent_id]["last_heartbeat"] = datetime.now().isoformat()
-    emit("heartbeat_ack", {"time": datetime.now().isoformat()})
+                connected_agents[agent_id]["last_heartbeat"] = now
+        # 存储系统状态
+        sys_info = data.get("system", {})
+        if sys_info:
+            with stats_lock:
+                agent_system_stats[agent_id] = {
+                    "cpu": sys_info.get("cpu", 0),
+                    "memory": sys_info.get("memory", 0),
+                    "memory_total": sys_info.get("memory_total", 0),
+                    "memory_percent": sys_info.get("memory_percent", 0),
+                    "disk": sys_info.get("disk", 0),
+                    "disk_total": sys_info.get("disk_total", 0),
+                    "uptime": sys_info.get("uptime", ""),
+                    "last_update": now,
+                }
+    emit("heartbeat_ack", {"time": now})
 
 
 def broadcast_agent_update():
-    """广播 Agent 状态更新到所有 Web 客户端"""
+    """广播 Agent 状态更新到所有 Web 客户端（含系统状态）"""
     with agents_lock:
-        agents_list = [
-            {
+        agents_list = []
+        for info in connected_agents.values():
+            agent_data = {
                 "id": info["id"],
                 "name": info["name"],
                 "status": info["status"],
+                "hostname": info.get("hostname", ""),
             }
-            for info in connected_agents.values()
-        ]
+            # 附上系统状态
+            with stats_lock:
+                sys_stats = agent_system_stats.get(info["id"])
+                if sys_stats:
+                    agent_data["system"] = sys_stats
+            agents_list.append(agent_data)
+
     socketio.emit("agent_update", {
         "agents": agents_list,
         "stats": {
@@ -1933,6 +2110,34 @@ def periodic_broadcast():
     while True:
         time.sleep(10)
         broadcast_agent_update()
+
+
+# ==================== 会话清理 ====================
+
+# 会话最后活跃时间
+_conversation_last_active: dict = {}
+_cleanup_lock = threading.Lock()
+
+def update_conversation_activity(session_id: str):
+    """标记会话活跃时间"""
+    with _cleanup_lock:
+        _conversation_last_active[session_id] = time.time()
+
+
+def cleanup_stale_sessions():
+    """定期清理过期会话（超过 6 小时未活跃）"""
+    while True:
+        time.sleep(600)  # 每 10 分钟检查一次
+        now = time.time()
+        stale_timeout = 6 * 3600  # 6 小时
+        with _cleanup_lock:
+            stale = [sid for sid, t in _conversation_last_active.items()
+                     if now - t > stale_timeout]
+            for sid in stale:
+                conversations.pop(sid, None)
+                _conversation_last_active.pop(sid, None)
+            if stale:
+                print(f"[清理] 已清理 {len(stale)} 个过期会话")
 
 
 # ==================== 启动 ====================
@@ -1965,6 +2170,7 @@ def main():
     threading.Thread(target=periodic_broadcast, daemon=True).start()
     threading.Thread(target=message_worker, daemon=True).start()
     threading.Thread(target=reply_sender, daemon=True).start()
+    threading.Thread(target=cleanup_stale_sessions, daemon=True).start()
 
     # 启动 QQ Bot（如果启用）
     if qq_bot:
@@ -2036,7 +2242,6 @@ def main():
                 return
 
             if text.startswith("/status"):
-                from datetime import datetime
                 agents_list = list(connected_agents.values())
                 status_text = "<b>📊 系统状态</b>\n\n"
                 status_text += f"🕐 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - 命令注入{% endblock %}
+{% block title %}漏洞练习 - Command Injection 命令注入{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-terminal-fill text-success me-2"></i>命令注入</h2>
+        <h2 class="mb-1"><i class="bi bi-terminal-fill text-success me-2"></i>Command Injection 命令注入</h2>
         <p class="text-muted mb-0">Command Injection - 在输入中注入系统命令</p>
     </div>
     <div>
@@ -38,6 +38,46 @@
                 {% if error %}
                 <div class="alert alert-danger mt-3"><i class="bi bi-x-circle-fill me-1"></i>{{ error }}</div>
                 {% endif %}
+
+                <!-- 快速上手 -->
+                <div class="card mt-3 border-success border-2">
+                    <div class="card-header bg-success bg-gradient text-white py-2">
+                        <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：命令注入三步搞定</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-hdd-network"></i></div>
+                                    <h6 class="fw-bold">第1步：正常Ping</h6>
+                                    <p class="small mb-0 mt-2">先输入正常 IP 看Ping结果</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">127.0.0.1</code>
+                                    <small class="text-muted d-block mt-2">看到正常Ping输出</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-terminal"></i></div>
+                                    <h6 class="fw-bold">第2步：注入命令</h6>
+                                    <p class="small mb-2">用分号或管道符追加命令</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">127.0.0.1; ls</code>
+                                    <small class="text-danger d-block mt-2">👉 先Ping再执行 ls！</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-success bg-opacity-10 rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                                    <h6 class="fw-bold">第3步：查看结果</h6>
+                                    <p class="small mb-2">点击"执行"按钮</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border border-success">
+                                        <small class="text-success fw-bold"><i class="bi bi-check2-circle me-1"></i>看到目录列表或whoami结果</small>
+                                    </div>
+                                    <small class="text-success d-block mt-2 fw-bold">出现额外命令输出 = 注入成功！</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -92,4 +132,22 @@ document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('command_injection'); }, 2000);
 });
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

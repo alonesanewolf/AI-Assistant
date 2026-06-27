@@ -6,14 +6,15 @@
     <title>企业安全平台 - 安全登录</title>
     <style>
         :root {
-            --bg: #f3f6fb;
-            --line: #d9e2ef;
+            --bg: #f1f5f9;
+            --line: #e2e8f0;
             --text-1: #0f172a;
-            --text-2: #64748b;
-            --primary: #0f4c81;
-            --primary-hover: #0b3e69;
-            --error: #dc2626;
-            --success: #059669;
+            --text-2: #475569;
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --primary-hover: #3730a3;
+            --error: #ef4444;
+            --success: #10b981;
             --card: #ffffff;
         }
 
@@ -81,7 +82,7 @@
             place-items: center;
             font-weight: 800;
             color: #f8fafc;
-            background: linear-gradient(135deg, #0f4c81, #3b82b5);
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
             box-shadow: 0 8px 18px rgba(15, 76, 129, .24);
         }
 
@@ -116,7 +117,7 @@
             background: rgba(255, 255, 255, .74);
         }
 
-        .stats b { display: block; font-size: 18px; margin-bottom: 3px; color: #0f4c81; }
+        .stats b { display: block; font-size: 18px; margin-bottom: 3px; color: var(--primary); }
         .stats small { color: #475569; font-size: 12px; }
 
         .panel {
@@ -179,8 +180,8 @@
         }
 
         .input-wrap:focus-within {
-            border-color: #0f4c81;
-            box-shadow: 0 0 0 3px rgba(15, 76, 129, .14);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, .14);
             background: #ffffff;
         }
 
@@ -197,7 +198,7 @@
         .eye {
             border: 0;
             background: transparent;
-            color: #0f4c81;
+            color: var(--primary);
             cursor: pointer;
             font-size: 12px;
             padding: 0 12px;
@@ -212,7 +213,7 @@
             color: var(--text-2);
         }
 
-        .row a { color: #0f4c81; text-decoration: none; }
+        .row a { color: var(--primary); text-decoration: none; }
         .row a:hover { text-decoration: underline; }
 
         .submit {
@@ -270,7 +271,7 @@
             letter-spacing: 5px;
             font-size: 20px;
             font-weight: 700;
-            color: #0f4c81;
+            color: var(--primary);
             user-select: none;
         }
 
@@ -298,7 +299,7 @@
         }
 
         .foot a {
-            color: #0f4c81;
+            color: var(--primary);
             text-decoration: none;
         }
 

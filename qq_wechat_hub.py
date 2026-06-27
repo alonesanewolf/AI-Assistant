@@ -34,10 +34,31 @@ PORT = int(os.environ.get("HUB_PORT", "5055"))
 MAX_HISTORY = 20
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", os.urandom(24).hex())
 
 # 用户对话历史存储
 user_sessions: dict[str, list[dict]] = {}
 sessions_lock = threading.Lock()
+# 会话最后活跃时间（用于过期清理）
+session_last_active: dict[str, float] = {}
+MAX_SESSION_IDLE = 1800  # 30分钟不活跃则清理
+_cleanup_check_counter = 0  # 每 N 次调用触发一次清理检查
+
+
+def _maybe_cleanup_sessions():
+    """定期清理过期会话（每 50 次调用触发一次）"""
+    global _cleanup_check_counter
+    _cleanup_check_counter += 1
+    if _cleanup_check_counter % 50 != 0:
+        return
+    now = time.time()
+    stale = [sid for sid, t in session_last_active.items()
+             if now - t > MAX_SESSION_IDLE]
+    for sid in stale:
+        user_sessions.pop(sid, None)
+        session_last_active.pop(sid, None)
+    if stale:
+        print(f"[清理] 已清理 {len(stale)} 个过期会话")
 
 
 # ==================== DeepSeek API 调用 ====================
@@ -48,6 +69,10 @@ def call_deepseek(session_id: str, user_message: str) -> str:
         if session_id not in user_sessions:
             user_sessions[session_id] = []
         history = user_sessions[session_id]
+        # 更新活跃时间
+        session_last_active[session_id] = time.time()
+        # 定期清理过期会话
+        _maybe_cleanup_sessions()
 
     # 构建消息
     messages = [

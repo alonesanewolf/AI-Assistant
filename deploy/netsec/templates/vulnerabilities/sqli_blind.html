@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - SQL盲注{% endblock %}
+{% block title %}漏洞练习 - SQL Injection (Blind) 盲注 SQL 注入{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-syringe-fill text-success me-2"></i>SQL盲注</h2>
+        <h2 class="mb-1"><i class="bi bi-syringe-fill text-success me-2"></i>SQL Injection (Blind) 盲注 SQL 注入</h2>
         <p class="text-muted mb-0">Blind SQL Injection - 通过条件判断推断信息</p>
     </div>
     <div>
@@ -37,6 +37,46 @@
                 {% if error %}
                 <div class="alert alert-danger mt-3"><i class="bi bi-x-circle-fill me-1"></i>{{ error }}</div>
                 {% endif %}
+
+                <!-- 快速上手 -->
+                <div class="card mt-3 border-success border-2">
+                    <div class="card-header bg-success bg-gradient text-white py-2">
+                        <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：盲注三步判断</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-1-circle"></i></div>
+                                    <h6 class="fw-bold">第1步：验证注入点</h6>
+                                    <p class="small mb-0 mt-2">输入永真条件看是否返回"存在"</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">1 AND 1=1</code>
+                                    <small class="text-muted d-block mt-2">看到绿色"用户存在"= 注入点确认</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-2-circle"></i></div>
+                                    <h6 class="fw-bold">第2步：条件判断</h6>
+                                    <p class="small mb-2">用真假条件对比页面差异</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">1 AND LENGTH((SELECT username FROM users LIMIT 1))=5</code>
+                                    <small class="text-danger d-block mt-2">👉 真→存在 / 假→不存在</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-success bg-opacity-10 rounded-3 p-3 text-center h-100 border border-success">
+                                    <div class="text-success fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                                    <h6 class="fw-bold">第3步：逐个字符猜解</h6>
+                                    <p class="small mb-2">通过二分法猜解数据</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border border-success">
+                                        <small class="text-success fw-bold"><i class="bi bi-check2-circle me-1"></i>逐步推断出真实数据</small>
+                                    </div>
+                                    <small class="text-success d-block mt-2 fw-bold">推断出用户名 = 攻击成功！</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card bg-light mt-3">
                     <div class="card-body">
@@ -84,4 +124,22 @@ document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('sqli_blind'); }, 1500);
 });
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

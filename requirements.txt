@@ -23,8 +23,8 @@ schedule>=1.2.0
 # 网页搜索
 beautifulsoup4>=4.12.0
 
-# 系统监控（可选）
-# psutil>=5.9.0
+# 系统监控（心跳上报 CPU/内存）
+psutil>=5.9.0
 
 # Windows 音量控制（可选，安装较复杂）
 # pycaw>=20230407
@@ -35,3 +35,9 @@ beautifulsoup4>=4.12.0
 
 # WebSocket 客户端（Agent 连接 Brain 需要）
 websocket-client>=1.7.0
+
+# 微信解密（企业微信消息加解密需要）
+# pycryptodome>=3.20.0
+
+# 桌面通知（可选）
+# plyer>=2.1.0

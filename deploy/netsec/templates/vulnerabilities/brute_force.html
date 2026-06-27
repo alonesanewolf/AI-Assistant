@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - 暴力破解{% endblock %}
+{% block title %}漏洞练习 - Brute Force 暴力破解{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-key-fill text-primary me-2"></i>暴力破解</h2>
+        <h2 class="mb-1"><i class="bi bi-key-fill text-primary me-2"></i>Brute Force 暴力破解</h2>
         <p class="text-muted mb-0">Brute Force - 通过暴力枚举尝试登录凭证</p>
     </div>
     <div>
@@ -44,10 +44,51 @@
                     <i class="bi bi-check-circle-fill me-1"></i><strong>登录成功！</strong> 欢迎回来，{{ success }}
                 </div>
                 {% endif %}
+
+                <!-- 快速上手 -->
+                <div class="card mt-3 border-primary border-2">
+                    <div class="card-header bg-primary bg-gradient text-white py-2">
+                        <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：暴力破解登录</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-person"></i></div>
+                                    <h6 class="fw-bold">第1步：输入账号</h6>
+                                    <p class="small mb-0 mt-2">填入要破解的目标账号</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border">
+                                        <small class="fw-bold text-primary">admin</small>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">常见默认管理员账号</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-lock"></i></div>
+                                    <h6 class="fw-bold">第2步：输入密码</h6>
+                                    <p class="small mb-2">填入常见弱密码</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">password</code>
+                                    <small class="text-danger d-block mt-2">👉 验证码固定为 1234</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                                    <h6 class="fw-bold">第3步：登录成功</h6>
+                                    <p class="small mb-2">点击登录按钮</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border border-primary">
+                                        <small class="text-success fw-bold"><i class="bi bi-check2-circle me-1"></i>登录成功！</small>
+                                    </div>
+                                    <small class="text-success d-block mt-2 fw-bold">看到绿色提示 = 破解成功！</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Payload 示例 -->
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> Payload 参考</div>
             <div class="card-body">
@@ -90,4 +131,22 @@ document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('brute_force'); }, 1500);
 });
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

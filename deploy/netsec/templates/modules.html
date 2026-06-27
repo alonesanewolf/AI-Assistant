@@ -3,14 +3,16 @@
 {% block extra_head %}
 <style>
     .module-card {
-        border-radius: 14px;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        transition: var(--transition);
         overflow: hidden;
+        background: var(--bg-card);
     }
     .module-card:hover {
-        box-shadow: 0 4px 20px rgba(0,0,0,.1);
+        box-shadow: var(--shadow-md);
         transform: translateY(-2px);
+        border-color: var(--primary);
     }
     .module-icon {
         width: 48px; height: 48px;
@@ -18,22 +20,23 @@
         display: flex; align-items: center; justify-content: center;
         font-size: 24px;
     }
-    .icon-blue { background: #dbeafe; color: #2563eb; }
-    .icon-green { background: #dcfce7; color: #16a34a; }
+    .icon-blue { background: var(--primary-bg); color: var(--primary); }
+    .icon-green { background: var(--success-bg); color: var(--success); }
     .icon-purple { background: #ede9fe; color: #7c3aed; }
-    .icon-orange { background: #fff7ed; color: #ea580c; }
-    .icon-red { background: #fef2f2; color: #dc2626; }
-    .icon-teal { background: #ccfbf1; color: #0d9488; }
-    .icon-cyan { background: #ecfeff; color: #0891b2; }
-    .icon-indigo { background: #e0e7ff; color: #4f46e5; }
+    .icon-orange { background: #fff7ed; color: #f97316; }
+    .icon-red { background: var(--danger-bg); color: var(--danger); }
+    .icon-teal { background: #ccfbf1; color: #14b8a6; }
+    .icon-cyan { background: var(--info-bg); color: var(--info); }
+    .icon-indigo { background: var(--primary-bg); color: var(--primary); }
     .config-block {
-        background: #f8fafc;
-        border-radius: 10px;
-        padding: 16px;
-        border-left: 4px solid #3b82f6;
+        background: var(--bg);
+        border-radius: var(--radius-sm);
+        padding: 14px;
+        border-left: 4px solid var(--primary);
         margin: 12px 0;
-        font-family: 'Courier New', monospace;
-        font-size: 13px;
+        font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.6;
     }
     .config-block pre {
         margin: 0;
@@ -42,55 +45,52 @@
     }
     .status-dot {
         display: inline-block;
-        width: 10px; height: 10px;
+        width: 9px; height: 9px;
         border-radius: 50%;
         margin-right: 6px;
+        box-shadow: 0 0 4px currentColor;
     }
-    .status-ok { background: #22c55e; }
-    .status-warn { background: #f59e0b; }
-    .status-off { background: #ef4444; }
+    .status-ok { background: var(--success); }
+    .status-warn { background: var(--warning); }
+    .status-off { background: var(--danger); }
     .badge-outline {
         display: inline-block;
         padding: 2px 10px;
-        border: 1px solid #cbd5e1;
-        border-radius: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-full);
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-secondary);
     }
     .section-divider {
-        border-top: 2px solid #e5e7eb;
+        border-top: 2px solid var(--border);
         margin: 2rem 0;
     }
     .ai-highlight {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary), #7c3aed);
         color: #fff;
-        border-radius: 14px;
-        padding: 24px;
+        border-radius: var(--radius);
+        padding: 28px;
         margin: 16px 0;
+        box-shadow: 0 4px 16px rgba(79,70,229,.25);
     }
     .ai-highlight h4 { color: #fff; }
     .agent-status-panel {
-        background: #1e293b;
-        color: #e2e8f0;
-        border-radius: 12px;
+        background: var(--bg-dark-2);
+        color: var(--text-light);
+        border-radius: var(--radius-sm);
         padding: 20px;
-        font-family: 'Courier New', monospace;
+        font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
         font-size: 13px;
     }
-    .agent-status-panel .online { color: #4ade80; }
-    .agent-status-panel .offline { color: #f87171; }
+    .agent-status-panel .online { color: var(--success); }
+    .agent-status-panel .offline { color: var(--danger); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center">
-    <div>
-        <h2><i class="bi bi-cpu-fill me-2"></i>功能模块与系统配置</h2>
-        <p class="text-muted mb-0">查看各模块功能说明、前置依赖和配置指南</p>
-    </div>
-    <a href="{{ url_for('ai_attack_page') }}" class="btn btn-lg px-4" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;">
-        <i class="bi bi-robot me-2"></i>AI 攻防实战
-    </a>
+<div class="page-header" style="width:100%">
+    <h2><i class="bi bi-cpu-fill"></i> 功能模块与系统配置</h2>
+    <div class="subtitle">查看各模块功能说明、前置依赖和配置指南</div>
 </div>
 
 <!-- ==================== AI 攻防模块（高亮） ==================== -->

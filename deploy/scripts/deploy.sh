@@ -72,10 +72,44 @@ echo -e "${GREEN}============================================${NC}"
 echo -e "  服务器 IP: ${CYAN}${SERVER_IP}${NC}"
 echo -e "  安装目录:  ${CYAN}${INSTALL_DIR}${NC}"
 echo -e "  安装 Java: ${CYAN}${INSTALL_JAVA}${NC}"
+echo -e "  安装 NetSec: ${CYAN}${INSTALL_NETSEC}${NC}"
 echo ""
 
-# ==================== 1. 系统基础配置 ====================
-echo -e "${YELLOW}[1/6] 系统基础配置...${NC}"
+# ==================== 0. 部署前检查 ====================
+echo -e "${YELLOW}[0/6] 部署前检查...${NC}"
+
+# 检查是否为 root 用户
+if [ "$(id -u)" -ne 0 ]; then
+    echo -e "  ${RED}✗${NC} 此脚本需要 root 权限运行"
+    echo "  请使用: sudo bash deploy.sh"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} root 权限确认"
+
+# 检查磁盘空间
+AVAIL_SPACE=$(df / --output=avail 2>/dev/null | tail -1)
+if [ -n "$AVAIL_SPACE" ] && [ "$AVAIL_SPACE" -lt 1048576 ]; then
+    echo -e "  ${RED}✗${NC} 磁盘空间不足 (可用 < 1GB)"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} 磁盘空间充足 ($(df -h / | tail -1 | awk '{print $4}'))"
+
+# 检查内存
+TOTAL_MEM=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
+if [ -n "$TOTAL_MEM" ] && [ "$TOTAL_MEM" -lt 512 ]; then
+    echo -e "  ${YELLOW}⚠${NC} 内存较小 (${TOTAL_MEM}MB)，运行时可能受影响"
+fi
+
+# 检查网络连通性
+if curl -s --connect-timeout 5 https://pypi.org > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} 网络连通"
+elif curl -s --connect-timeout 5 http://pypi.org > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} 网络连通 (HTTP)"
+else
+    echo -e "  ${YELLOW}⚠${NC} 网络可能受限，请确保能访问 PyPI 等源"
+fi
+
+echo ""
 echo "  检测到系统: ${CYAN}${OS_ID} (${VERSION_ID:-})${NC}"
 
 # 更新系统
@@ -577,3 +611,14 @@ echo -e "    - 生产环境请开启 SELinux 和防火墙"
 echo -e "    - 建议配置 HTTPS (Let's Encrypt)"
 echo -e "    - 定期更新系统和依赖包"
 echo ""
+
+# ==================== 部署后验证 ====================
+echo -e "${YELLOW}运行部署验证...${NC}"
+VALIDATE_SCRIPT="${SCRIPT_DIR}/validate.sh"
+if [ -f "$VALIDATE_SCRIPT" ]; then
+    echo ""
+    bash "$VALIDATE_SCRIPT" || echo -e "${YELLOW}验证过程有警告，但不影响基本部署${NC}"
+else
+    echo -e "  ${YELLOW}⚠${NC} 验证脚本未找到，跳过自动验证"
+    echo "  手动验证: bash ${INSTALL_DIR}/deploy/scripts/validate.sh"
+fi

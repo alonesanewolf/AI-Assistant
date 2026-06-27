@@ -1,18 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - 弱会话ID{% endblock %}
+{% block title %}漏洞练习 - Weak Session IDs 不安全会话 ID{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-key-fill text-primary me-2"></i>弱会话ID</h2>
+        <h2 class="mb-1"><i class="bi bi-key-fill text-primary me-2"></i>Weak Session IDs 不安全会话 ID</h2>
         <p class="text-muted mb-0">Weak Session ID - 会话ID可预测，可被伪造</p>
     </div>
     <div>
-        <span class="badge badge-low">Low</span>
+        <span class="badge badge-{{ 'low' if difficulty == 'low' else ('warning' if difficulty == 'medium' else 'danger') }}">
+            {{ 'Low' if difficulty == 'low' else ('Medium' if difficulty == 'medium' else 'High') }}
+        </span>
         <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>返回列表</a>
     </div>
 </div>
+
+{% if difficulty == 'high' %}
+<div class="alert alert-danger d-flex align-items-center border-0 shadow-sm"><i class="bi bi-shield-fill-exclamation fs-5 me-3"></i><div><strong>High 难度</strong> — 使用 UUID 生成会话ID，但通过分析多组UUID可发现其模式（固定前缀+随机部分截断）。</div></div>
+{% elif difficulty == 'medium' %}
+<div class="alert alert-warning d-flex align-items-center border-0 shadow-sm"><i class="bi bi-shield-fill-exclamation fs-5 me-3"></i><div><strong>Medium 难度</strong> — 使用时间戳的 MD5 哈希作为会话ID，通过分析规律可预测。</div></div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center border-0 shadow-sm"><i class="bi bi-shield-fill-check fs-5 me-3"></i><div><strong>Low 难度</strong> — 会话ID格式为 sess_用户ID_时间戳，极易预测。</div></div>
+{% endif %}
 
 <div class="row">
     <div class="col-lg-8">
@@ -44,19 +54,71 @@
                     <button type="submit" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>设置会话</button>
                 </form>
 
-                {% if success %}
+                {% if attack_success %}
+                <div class="text-center my-4 p-5 bg-success bg-opacity-10 rounded-4 border border-success border-2 animate__animated animate__bounceIn">
+                    <div class="display-1 text-success mb-3">🎉</div>
+                    <h3 class="text-success fw-bold mb-2"><i class="bi bi-trophy-fill me-2"></i>攻击成功！会话伪造完成！</h3>
+                    <p class="mb-2">你成功预测了会话ID：<code class="fs-5 bg-dark text-light px-3 py-1 rounded">{{ predicted_id }}</code></p>
+                    <p class="text-muted small mb-3">通过分析生成规律，你伪造了一个有效的会话标识符</p>
+                    <a href="{{ url_for('dvwa_vulnerabilities') }}" class="btn btn-success btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>返回漏洞列表
+                    </a>
+                    <small class="text-muted d-block mt-2">页面将在 <span id="countdown">5</span> 秒后自动跳转</small>
+                </div>
+                {% elif success %}
                 <div class="alert alert-success mt-3"><i class="bi bi-check-circle-fill me-1"></i><strong>会话设置成功！</strong> 当前会话ID: {{ success }}</div>
                 {% endif %}
+                {% if error %}
+                <div class="alert alert-danger mt-3"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>预测失败！</strong> {{ error }}</div>
+                {% endif %}
 
-                <div class="card bg-light mt-3">
+                <!-- 操作示例 -->
+                <div class="card mt-3 border-primary border-2">
+                    <div class="card-header bg-primary bg-gradient text-white py-2">
+                        <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：预测/伪造会话ID</strong>
+                    </div>
                     <div class="card-body">
-                        <h6>会话ID生成算法分析:</h6>
-                        <ul>
-                            <li>使用递增数字 + 时间戳</li>
-                            <li>格式: <code>sess_[序号]_[时间戳]</code></li>
-                            <li>示例: <code>sess_1_1713000000</code></li>
-                            <li>序号可预测，时间戳可推算</li>
-                        </ul>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-arrow-repeat"></i></div>
+                                    <h6 class="fw-bold">第1步：多点几次</h6>
+                                    <p class="small mb-0 mt-2">点击下面这个按钮 <strong>3~5 次</strong></p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border">
+                                        <small class="fw-bold text-primary">🔘 生成新会话ID</small>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">看下面列表里出现的几个 ID，找规律</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-key"></i></div>
+                                    <h6 class="fw-bold">第2步：推测下一个</h6>
+                                    <p class="small mb-2">把看到的最新 ID 的数字部分 <strong>+1</strong></p>
+                                    {% if difficulty == 'low' %}
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">sess_1_1719792000</code>
+                                    <small class="text-danger d-block mt-2">👉 末尾数字+1就是下一个！</small>
+                                    {% elif difficulty == 'medium' %}
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">把时间戳MD5取前16位</code>
+                                    <small class="text-warning d-block mt-2">👉 时间戳递增，算MD5即可</small>
+                                    {% else %}
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">多次生成找碰撞UUID</code>
+                                    <small class="text-muted d-block mt-2">👉 截断后可能重复</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                                    <h6 class="fw-bold">第3步：填进去验证</h6>
+                                    <p class="small mb-2">在"设置会话ID"框里输入你推测的 ID</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border border-primary">
+                                        <small class="text-success fw-bold"><i class="bi bi-check2-circle me-1"></i>会话设置成功！</small>
+                                    </div>
+                                    <small class="text-success d-block mt-2 fw-bold">看到这个绿条 = 攻击成功！</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,5 +169,24 @@ function generateNewSession() {
 document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('weak_session_id'); }, 1500);
 });
+
+// 攻击成功后自动跳转倒计时
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
 </script>
 {% endblock %}

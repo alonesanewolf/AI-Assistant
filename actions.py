@@ -133,7 +133,20 @@ class ComputerActions:
 
     @staticmethod
     def run_command(command: str) -> str:
-        """执行系统命令并返回输出"""
+        """执行系统命令并返回输出（含安全校验）"""
+        # 安全检查：拒绝危险命令
+        dangerous_patterns = [
+            r"\brm\s+-rf\b", r"\bdel\s+/[fFsS]", r"\bformat\s+[c-zC-Z]:",
+            r"\bshutdown\b", r"\brestart\b", r"\bdrop\s+database\b",
+            r"\bdrop\s+table\b", r"\btruncate\s+table\b", r">\s*/dev/",
+            r"\bdd\s+if=", r"\bchmod\s+777\b",
+        ]
+        import re as _re_inner
+        cmd_lower = command.lower().strip()
+        for pattern in dangerous_patterns:
+            if _re_inner.search(pattern, cmd_lower):
+                return f"[安全拦截] 拒绝执行危险命令: {command[:80]}"
+
         try:
             result = subprocess.run(
                 command,

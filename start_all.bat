@@ -10,17 +10,21 @@ echo.
 :: 进入项目目录
 cd /d "%~dp0"
 
-:: 检查 Python
-python --version >nul 2>&1
+:: 使用虚拟环境中的 Python
+set VENV_PYTHON=%~dp0venv\Scripts\python.exe
+set VENV_PIP=%~dp0venv\Scripts\pip.exe
+
+:: 检查虚拟环境 Python
+%VENV_PYTHON% --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [错误] 未找到 Python，请先安装 Python 3.8+
+    echo [错误] 未找到虚拟环境 Python，请先运行 setup 创建 venv
     pause
     exit /b 1
 )
 
 :: 检查依赖
 echo [1/3] 检查 Python 依赖...
-pip install -r requirements.txt >nul 2>&1
+%VENV_PIP% install -r requirements.txt >nul 2>&1
 echo   依赖检查完成
 
 :: 创建日志目录
@@ -28,15 +32,15 @@ if not exist "logs" mkdir logs
 
 :: 启动 AI 助手 (端口 8080)
 echo [2/3] 启动 AI 智能助手 (端口 8080)...
-start "AI_Assistant" /MIN python local_assistant.py
+start "AI_Assistant" /MIN %VENV_PYTHON% local_assistant.py
 echo   AI 智能助手已启动
 
 :: 启动网络安全助手 (端口 5100) - 可选
 echo [3/3] 启动网络安全助手 (端口 5100)...
 if exist "deploy\netsec\run.py" (
     cd deploy\netsec
-    pip install -r requirements.txt >nul 2>&1
-    start "NetSec_Assistant" /MIN python run.py
+    %VENV_PIP% install -r requirements.txt >nul 2>&1
+    start "NetSec_Assistant" /MIN %VENV_PYTHON% run.py
     cd ..\..
     echo   网络安全助手已启动
 ) else (

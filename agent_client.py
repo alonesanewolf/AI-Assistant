@@ -21,6 +21,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from datetime import datetime
@@ -51,39 +52,56 @@ COMMAND_WHITELIST = [
     "tasklist", "ps", "netstat", "whoami", "hostname",
     "python --version", "pip list", "node --version",
     "git status", "git log", "git branch",
-    "systeminfo", "wmic cpu", "wmic memorychip",
+    "systeminfo",
+    # wmic 在新版 Windows 中已废弃，替换为 PowerShell 对应命令
+    # 保留以兼容旧系统，但建议使用 get_processes/system_info 等专用指令
+    "wmic cpu", "wmic memorychip",
 ]
 
-# 危险命令黑名单
-COMMAND_BLACKLIST = [
-    "rm -rf", "del /f", "format", "shutdown", "restart",
-    "drop", "truncate", "> /dev/", "dd if=",
+# 危险命令黑名单（使用正则单词边界匹配，防止误拦截）
+import re as _re
+COMMAND_BLACKLIST_PATTERNS = [
+    r"\brm\s+-rf\b",      # Unix 递归删除
+    r"\bdel\s+/f\b",      # Windows 强制删除
+    r"\bformat\s+[c-zC-Z]:",  # 格式化磁盘（需后跟盘符）
+    r"\bshutdown\b",      # 关机
+    r"(?<!\w)shutdown(?!\w)",  # 精确匹配 shutdown
+    r"\brestart\b",       # 重启（注意：只会匹配带边界的情况）
+    r"\bdrop\s+database\b",  # 危险 SQL
+    r"\bdrop\s+table\b",     # 危险 SQL
+    r"\btruncate\s+table\b", # 危险 SQL
+    r">\s*/dev/",         # 设备写入
+    r"\bdd\s+if=",        # dd 命令
 ]
-
 
 def is_command_safe(command: str) -> bool:
     """检查命令是否安全（防止命令注入和串联绕过）"""
+    import re as _re_inner
     cmd_lower = command.lower().strip()
 
+    # 检测换行注入（shell=True 下换行符可执行额外命令）
+    if "\n" in cmd_lower or "\r" in cmd_lower or "\x00" in cmd_lower:
+        return False
+
     # 检测危险分隔符（防止命令串联绕过白名单）
-    dangerous_separators = ["&&", "||", ";", "|", "`", "$(", "${"]
+    dangerous_separators = ["&&", "||", ";", "|", "`", "$(", "${", "&", "%0a", "%0d"]
     for sep in dangerous_separators:
         if sep in cmd_lower:
             return False
 
-    # 检查黑名单
-    for pattern in COMMAND_BLACKLIST:
-        if pattern in cmd_lower:
+    # 检查黑名单（正则单词边界，避免误拦截）
+    for pattern in COMMAND_BLACKLIST_PATTERNS:
+        if _re_inner.search(pattern, cmd_lower):
             return False
 
-    # 检查白名单
+    # 检查白名单：只允许白名单中的命令前缀
     if COMMAND_WHITELIST:
         for allowed in COMMAND_WHITELIST:
             if cmd_lower.startswith(allowed.lower()):
                 return True
         return False
 
-    return False  # 默认拒绝，除非白名单为空
+    return False  # 默认拒绝
 
 
 # ==================== 指令执行器 ====================
@@ -260,10 +278,12 @@ class CommandExecutor:
                     return f"剪贴板内容 ({len(content)} 字符):\n{content[:500]}"
                 return "剪贴板为空"
         except ImportError:
-            # 回退到 subprocess
+            # 回退到 subprocess（不使用 shell=True）
             if sys.platform == "win32":
                 if text.strip():
-                    subprocess.run(["clip"], input=text, text=True, shell=True)
+                    # 通过 stdin 写入剪贴板，安全无注入风险
+                    subprocess.run("clip", input=text, text=True, shell=False,
+                                   creationflags=0x08000000 if sys.platform == "win32" else 0)
                     return f"已写入剪贴板"
                 else:
                     return "需要安装 pyperclip: pip install pyperclip"
@@ -271,7 +291,7 @@ class CommandExecutor:
 
     @staticmethod
     def volume_control(action: str) -> str:
-        """音量控制: up/down/mute/50 (设置到50%)"""
+        """音量控制: up/down/mute (设置数值暂未实现，使用按键调节)"""
         action = action.strip().lower()
 
         try:
@@ -508,6 +528,9 @@ class AgentClient:
             logger=False,
             engineio_logger=False,
         )
+        self._heartbeat_stop = threading.Event()
+        self._heartbeat_thread = None
+        self._heartbeat_stop.set()  # 初始状态为已停止
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -525,8 +548,7 @@ class AgentClient:
             })
 
         @self.sio.on("disconnect")
-        def on_disconnect():
-            reason = "未知原因"
+        def on_disconnect(reason="未知原因"):
             print(f"[连接] 与大脑断开连接 ({reason})")
 
         @self.sio.on("registered")
@@ -568,16 +590,41 @@ class AgentClient:
             pass  # 静默处理
 
     def _heartbeat_loop(self):
-        """心跳发送循环"""
-        while self.sio.connected:
-            time.sleep(30)
+        """心跳发送循环（含系统状态上报，支持优雅退出）"""
+        while not self._heartbeat_stop.is_set() and self.sio.connected:
+            self._heartbeat_stop.wait(30)  # 每30秒或收到停止信号
+            if self._heartbeat_stop.is_set():
+                break
             try:
-                self.sio.emit("agent_heartbeat", {
-                    "agent_id": AGENT_ID,
-                    "time": datetime.now().isoformat(),
-                })
+                if self.sio.connected:
+                    self.sio.emit("agent_heartbeat", {
+                        "agent_id": AGENT_ID,
+                        "time": datetime.now().isoformat(),
+                        "system": self._get_system_stats(),
+                    })
             except Exception:
                 pass
+
+    @staticmethod
+    def _get_system_stats() -> dict:
+        """采集本地系统状态（CPU/内存/磁盘/运行时间）"""
+        stats = {"cpu": 0, "memory": 0, "memory_total": 0, "memory_percent": 0,
+                 "disk": 0, "disk_total": 0, "uptime": ""}
+        try:
+            import psutil
+            stats["cpu"] = round(psutil.cpu_percent(interval=0.5), 1)
+            mem = psutil.virtual_memory()
+            stats["memory"] = mem.used // (1024 ** 2)
+            stats["memory_total"] = mem.total // (1024 ** 2)
+            stats["memory_percent"] = round(mem.percent, 1)
+            disk = psutil.disk_usage("/")
+            stats["disk"] = disk.used // (1024 ** 3)
+            stats["disk_total"] = disk.total // (1024 ** 3)
+            stats["uptime"] = datetime.fromtimestamp(
+                psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S")
+        except ImportError:
+            pass
+        return stats
 
     def run(self):
         """启动 Agent 客户端"""
@@ -603,24 +650,27 @@ class AgentClient:
                 print(f"\n[连接] 正在连接大脑 {BRAIN_URL} ...")
                 self.sio.connect(BRAIN_URL)
 
-                # 启动心跳线程
-                import threading
-                heartbeat_thread = threading.Thread(
+                # 启动心跳线程（先停旧再启新，防止重连时线程泄漏）
+                self._heartbeat_stop.clear()
+                self._heartbeat_thread = threading.Thread(
                     target=self._heartbeat_loop, daemon=True
                 )
-                heartbeat_thread.start()
+                self._heartbeat_thread.start()
 
                 print("[就绪] 等待指令...\n")
                 self.sio.wait()
 
             except socketio.exceptions.ConnectionError as e:
                 print(f"[重连] 连接失败: {e}，5秒后重试...")
+                self._heartbeat_stop.set()
                 time.sleep(5)
             except KeyboardInterrupt:
                 print("\n[退出] Agent 已停止")
+                self._heartbeat_stop.set()
                 break
             except Exception as e:
                 print(f"[错误] {e}，5秒后重试...")
+                self._heartbeat_stop.set()
                 time.sleep(5)
 
 

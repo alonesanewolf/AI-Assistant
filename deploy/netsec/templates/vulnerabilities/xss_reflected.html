@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - 反射型XSS{% endblock %}
+{% block title %}漏洞练习 - XSS (Reflected) 反射型 XSS{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-search text-warning me-2"></i>反射型XSS</h2>
+        <h2 class="mb-1"><i class="bi bi-search text-warning me-2"></i>XSS (Reflected) 反射型 XSS</h2>
         <p class="text-muted mb-0">Reflected XSS - 恶意脚本通过URL参数反射到页面</p>
     </div>
     <div>
@@ -44,7 +44,49 @@
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <!-- 快速上手 -->
+        <div class="card mt-3 border-warning border-2">
+            <div class="card-header bg-warning bg-gradient text-dark py-2">
+                <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：反射型 XSS 弹窗攻击</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-search"></i></div>
+                            <h6 class="fw-bold">第1步：正常搜索</h6>
+                            <p class="small mb-0 mt-2">先输入正常文本看效果</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border">
+                                <small class="fw-bold text-warning">hello</small>
+                            </div>
+                            <small class="text-muted d-block mt-2">会显示"未找到关于 hello 的结果"</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-code-slash"></i></div>
+                            <h6 class="fw-bold">第2步：注入脚本</h6>
+                            <p class="small mb-2">输入 XSS payload</p>
+                            <code class="d-block bg-dark text-light p-2 rounded mt-2 small">&lt;script&gt;alert(1)&lt;/script&gt;</code>
+                            <small class="text-danger d-block mt-2">👉 点击搜索触发弹窗！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                            <h6 class="fw-bold">第3步：观察弹窗</h6>
+                            <p class="small mb-2">点击"搜索"按钮</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border border-warning">
+                                <small class="text-success fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>浏览器弹出 alert</small>
+                            </div>
+                            <small class="text-success d-block mt-2 fw-bold">看到弹窗 = XSS 成功！</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
             <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> Payload 参考</div>
             <div class="card-body">
                 <ul>
@@ -71,7 +113,49 @@
                 <p class="text-muted">在搜索框中输入script标签或事件处理器</p>
             </div>
         </div>
-        <div class="card shadow-sm">
+        <!-- 快速上手 -->
+        <div class="card mt-3 border-warning border-2">
+            <div class="card-header bg-warning bg-gradient text-dark py-2">
+                <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：反射型 XSS 弹窗攻击</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-search"></i></div>
+                            <h6 class="fw-bold">第1步：正常搜索</h6>
+                            <p class="small mb-0 mt-2">先输入正常文本看效果</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border">
+                                <small class="fw-bold text-warning">hello</small>
+                            </div>
+                            <small class="text-muted d-block mt-2">会显示"未找到关于 hello 的结果"</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-code-slash"></i></div>
+                            <h6 class="fw-bold">第2步：注入脚本</h6>
+                            <p class="small mb-2">输入 XSS payload</p>
+                            <code class="d-block bg-dark text-light p-2 rounded mt-2 small">&lt;script&gt;alert(1)&lt;/script&gt;</code>
+                            <small class="text-danger d-block mt-2">👉 点击搜索触发弹窗！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-3 text-center h-100 border border-warning">
+                            <div class="text-warning fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                            <h6 class="fw-bold">第3步：观察弹窗</h6>
+                            <p class="small mb-2">点击"搜索"按钮</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border border-warning">
+                                <small class="text-success fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>浏览器弹出 alert</small>
+                            </div>
+                            <small class="text-success d-block mt-2 fw-bold">看到弹窗 = XSS 成功！</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
             <div class="card-header bg-warning text-dark"><i class="bi bi-shield-check me-1"></i> 防护措施</div>
             <div class="card-body">
                 <ul class="mb-0">
@@ -89,4 +173,22 @@ document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('xss_reflected'); }, 1500);
 });
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

@@ -5,7 +5,20 @@
 
 import requests
 from typing import Optional, Callable
-from bs4 import BeautifulSoup
+
+# bs4 是可选依赖，延迟导入避免启动崩溃
+_bs4_available = None
+
+def _get_bs4():
+    """延迟导入 BeautifulSoup（可选依赖）"""
+    global _bs4_available
+    if _bs4_available is None:
+        try:
+            from bs4 import BeautifulSoup as _BS
+            _bs4_available = _BS
+        except ImportError:
+            _bs4_available = False
+    return _bs4_available
 
 
 class WebSearch:
@@ -40,7 +53,10 @@ class WebSearch:
             )
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            BS = _get_bs4()
+            if not BS:
+                return []
+            soup = BS(response.text, "html.parser")
             results = soup.select(".result")
 
             if not results:
@@ -96,7 +112,10 @@ class WebSearch:
             response.raise_for_status()
             response.encoding = response.apparent_encoding
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            BS = _get_bs4()
+            if not BS:
+                return "网页内容抓取需要安装 beautifulsoup4: pip install beautifulsoup4"
+            soup = BS(response.text, "html.parser")
 
             # 移除脚本和样式
             for tag in soup(["script", "style", "nav", "footer", "header"]):

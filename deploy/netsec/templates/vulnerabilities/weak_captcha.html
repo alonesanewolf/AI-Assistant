@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - 不安全验证码{% endblock %}
+{% block title %}漏洞练习 - Insecure CAPTCHA 不安全验证码{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-image text-primary me-2"></i>不安全验证码</h2>
-        <p class="text-muted mb-0">Weak Captcha - 验证码可被绕过或识别</p>
+        <h2 class="mb-1"><i class="bi bi-image text-primary me-2"></i>Insecure CAPTCHA 不安全验证码</h2>
+        <p class="text-muted mb-0">Insecure CAPTCHA - 验证码可被绕过或识别</p>
     </div>
     <div>
         <span class="badge badge-low">Low</span>
@@ -47,6 +47,48 @@
                 {% if error %}
                 <div class="alert alert-danger mt-3"><i class="bi bi-x-circle-fill me-1"></i>{{ error }}</div>
                 {% endif %}
+
+                <!-- 快速上手 -->
+                <div class="card mt-3 border-primary border-2">
+                    <div class="card-header bg-primary bg-gradient text-white py-2">
+                        <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：直接抄验证码登录</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-eye"></i></div>
+                                    <h6 class="fw-bold">第1步：看验证码</h6>
+                                    <p class="small mb-0 mt-2">验证码直接显示在输入框右边</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border">
+                                        <small class="fw-bold text-primary">例如: 1234</small>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">漏洞：明文展示，无需识别图片</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-light rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-keyboard"></i></div>
+                                    <h6 class="fw-bold">第2步：填入信息</h6>
+                                    <p class="small mb-2">用户名 admin / 密码 admin</p>
+                                    <code class="d-block bg-dark text-light p-2 rounded mt-2 small">admin / admin / 1234</code>
+                                    <small class="text-danger d-block mt-2">👉 直接把看到的验证码抄进去！</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-3 text-center h-100 border border-primary">
+                                    <div class="text-primary fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                                    <h6 class="fw-bold">第3步：登录成功</h6>
+                                    <p class="small mb-2">点击登录按钮</p>
+                                    <div class="bg-white rounded-3 p-2 mt-2 border border-primary">
+                                        <small class="text-success fw-bold"><i class="bi bi-check2-circle me-1"></i>登录成功（演示模式）</small>
+                                    </div>
+                                    <small class="text-success d-block mt-2 fw-bold">看到绿色提示 = 攻击成功！</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -93,4 +135,22 @@ document.getElementById('vulnForm').addEventListener('submit', function() {
     setTimeout(function(){ checkVulnPass('weak_captcha'); }, 1500);
 });
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}

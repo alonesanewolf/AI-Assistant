@@ -2,74 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>安全靶场后台</title>
-    <style>
-        :root {
-            --bg: #f1f5f9;
-            --panel: #0f172a;
-            --panel-2: #1e293b;
-            --text: #e2e8f0;
-            --text-muted: #94a3b8;
-            --card: #ffffff;
-            --line: #e2e8f0;
-            --primary: #2563eb;
-            --success: #16a34a;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --purple: #7c3aed;
-        }
+    <meta http-equiv="refresh" content="0;url={{ url_for('range_page') }}">
+    <title>跳转中...</title>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f1f5f9;color:#64748b">
+    <p>正在跳转到安全靶场... <a href="{{ url_for('range_page') }}">点击此处</a></p>
+</body>
+</html>
 
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            background: var(--bg);
-            color: #0f172a;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            background: linear-gradient(180deg, var(--panel), var(--panel-2));
-            color: var(--text);
-            padding: 18px 14px;
-            border-right: 1px solid #0b1222;
-        }
-
-        .brand {
-            padding: 8px 10px 16px;
-            border-bottom: 1px solid rgba(148, 163, 184, .2);
-            margin-bottom: 14px;
-        }
-
-        .brand h2 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .brand small {
-            display: block;
-            margin-top: 6px;
-            color: var(--text-muted);
-        }
-
-        .tree {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            font-size: 14px;
-        }
-
-        .tree details {
-            margin: 4px 0;
-            border-radius: 8px;
             overflow: hidden;
             background: rgba(15, 23, 42, .2);
         }
@@ -349,6 +289,13 @@
                             <button class="tree-link"
                                     data-url="{{ url_for('range_page') }}">
                                 安全实验中心
+                            </button>
+                        </li>
+
+                        <li>
+                            <button class="tree-link"
+                                    data-url="{{ url_for('security_scan_page') }}">
+                                🔍 三级安全扫描
                             </button>
                         </li>
 
@@ -733,6 +680,7 @@
 
     const urls = {
         range: "{{ url_for('range_page') }}",
+        securityScan: "{{ url_for('security_scan_page') }}",
         portScan: "{{ url_for('port_scan_page') }}",
         history: "{{ url_for('scan_history') }}",
         networkScan: "{{ url_for('network_scan_page') }}",
@@ -1000,9 +948,24 @@
     function showTools() {
         contentPanel.innerHTML = `
             <h3>安全工具</h3>
-            <p>集成端口扫描、网络探测、WAF 检测、指纹识别、目录扫描、子域名枚举等安全扫描模块。</p>
+            <p>集成三级安全扫描、端口扫描、网络探测、WAF 检测、指纹识别、目录扫描、子域名枚举等安全扫描模块。</p>
 
             <div class="dashboard-grid">
+
+                <div class="function-card" style="border-left: 4px solid #7c3aed;">
+                    <h4>🔍 三级安全扫描</h4>
+                    <p>低/中/高三级自动安全扫描，一键完成端口扫描、WAF检测、指纹识别、子域名枚举、Web目录扫描和漏洞评估。</p>
+                    <ul>
+                        <li>🟢 低等级：常见端口快速扫描</li>
+                        <li>🟡 中等级：端口+WAF+指纹+子域名</li>
+                        <li>🔴 高等级：全端口扫描+漏洞评估报告</li>
+                    </ul>
+                    <div class="card-actions">
+                        <a class="btn btn-success" href="${urls.securityScan}">
+                            开始扫描
+                        </a>
+                    </div>
+                </div>
 
                 <div class="function-card">
                     <h4>端口扫描</h4>

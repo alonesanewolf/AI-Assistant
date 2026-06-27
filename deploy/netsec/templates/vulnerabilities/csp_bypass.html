@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}漏洞练习 - CSP绕过{% endblock %}
+{% block title %}漏洞练习 - CSP Bypass CSP 策略绕过{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="mb-1"><i class="bi bi-shield-slash text-secondary me-2"></i>CSP绕过</h2>
+        <h2 class="mb-1"><i class="bi bi-shield-slash text-secondary me-2"></i>CSP Bypass CSP 策略绕过</h2>
         <p class="text-muted mb-0">CSP Bypass - 内容安全策略配置不当可被绕过</p>
     </div>
     <div>
@@ -49,7 +49,49 @@
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <!-- 快速上手 -->
+        <div class="card mt-3 border-secondary border-2">
+            <div class="card-header bg-secondary bg-gradient text-white py-2">
+                <i class="bi bi-play-btn-fill me-2"></i><strong>快速上手：CSP 策略绕过</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-shield-slash"></i></div>
+                            <h6 class="fw-bold">第1步：查看 CSP</h6>
+                            <p class="small mb-0 mt-2">页面顶部显示了当前策略</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border">
+                                <small class="fw-bold text-secondary">unsafe-inline 允许内联</small>
+                            </div>
+                            <small class="text-muted d-block mt-2">注意 unsafe-inline 的存在</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-code-slash"></i></div>
+                            <h6 class="fw-bold">第2步：注入 Payload</h6>
+                            <p class="small mb-2">在评论框输入脚本</p>
+                            <code class="d-block bg-dark text-light p-2 rounded mt-2 small">&lt;img src=x onerror=alert(1)&gt;</code>
+                            <small class="text-danger d-block mt-2">👉 unsafe-inline 允许此标签！</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-secondary bg-opacity-10 rounded-3 p-3 text-center h-100 border border-secondary">
+                            <div class="text-secondary fs-1 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+                            <h6 class="fw-bold">第3步：点击提交</h6>
+                            <p class="small mb-2">点击"提交"触发 payload</p>
+                            <div class="bg-white rounded-3 p-2 mt-2 border border-secondary">
+                                <small class="text-success fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Payload 插入到 DOM</small>
+                            </div>
+                            <small class="text-success d-block mt-2 fw-bold">成功执行 = CSP 绕过成功！</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
             <div class="card-header bg-dark text-white"><i class="bi bi-code-slash me-1"></i> CSP分析</div>
             <div class="card-body">
                 <p>当前CSP策略中 <code>'unsafe-inline'</code> 和 <code>'unsafe-eval'</code> 允许执行内联脚本，导致CSP形同虚设。</p>
@@ -108,4 +150,22 @@ function testCSP(payload) {
     checkVulnPass('csp_bypass');
 }
 </script>
+{% if attack_success %}
+(function() {
+    var count = 5;
+    var el = document.getElementById('countdown');
+    if (el) {
+        var timer = setInterval(function() {
+            count--;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = '{{ url_for("dvwa_vulnerabilities") }}';
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    }
+})();
+{% endif %}
+
 {% endblock %}
