@@ -7,7 +7,8 @@
   3. Redis 消息队列 - 异步任务调度（可选，回退内存队列）
   4. QQ Bot 接入 - 正向 WebSocket / HTTP 回调双模式
   5. 微信接入 - 企业微信机器人 / 个人微信 / HTTP 回调
-  6. 指令路由 - 20+ 种电脑操作指令
+  6. 微信 ClawBot - 官方个人微信 Bot（iLink 协议扫码登录）
+  7. 指令路由 - 20+ 种电脑操作指令
 
 架构:
   QQ/微信/浏览器 --> Brain(Flask+SocketIO) --> Redis Queue --> Agent Client --> 电脑执行
@@ -56,6 +57,9 @@ QQ_WS_URL = os.environ.get("QQ_WS_URL", "ws://localhost:3001")
 # 微信配置
 WECHAT_ENABLED = os.environ.get("WECHAT_ENABLED", "").lower() == "true"
 WECOM_BOT_KEY = os.environ.get("WECOM_BOT_KEY", "")
+
+# ClawBot 配置（微信官方个人号 Bot）
+CLAWBOT_ENABLED = os.environ.get("CLAWBOT_ENABLED", "").lower() in ("true", "1", "yes")
 
 # Telegram 配置（手机遥控）
 TELEGRAM_ENABLED = os.environ.get("TELEGRAM_BOT_TOKEN", "") != ""
@@ -256,6 +260,12 @@ wechat_bot = None
 if WECHAT_ENABLED:
     from wechat_bot import WeChatBot
     wechat_bot = WeChatBot(mode="wecom_bot", webhook_key=WECOM_BOT_KEY)
+
+# ClawBot（微信官方个人号 Bot）
+clawbot = None
+if CLAWBOT_ENABLED:
+    from clawbot import ClawBotClient
+    clawbot = ClawBotClient()
 
 # Telegram Bot（如果启用）
 telegram_bot = None
@@ -2192,6 +2202,14 @@ def main():
     if wechat_bot:
         wechat_bot.start()
         print("[WeChat] 微信 Bot 已启动")
+
+    # 启动 ClawBot（微信官方个人号 Bot）
+    if clawbot:
+        def start_clawbot_thread():
+            """在独立线程中启动 ClawBot"""
+            clawbot.start(block=True)
+        threading.Thread(target=start_clawbot_thread, daemon=True, name="clawbot").start()
+        print("[ClawBot] 微信 ClawBot 已后台启动")
 
     # 启动 Telegram Bot（如果启用）
     if telegram_bot:

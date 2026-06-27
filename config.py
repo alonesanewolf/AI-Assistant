@@ -96,6 +96,11 @@ WECOM_AGENT_SECRET = _env("WECOM_AGENT_SECRET")
 WECOM_TOKEN = _env("WECOM_TOKEN")
 WECOM_ENCODING_AES_KEY = _env("WECOM_ENCODING_AES_KEY")
 
+# ==================== ClawBot（微信官方个人号 Bot）====================
+
+CLAWBOT_ENABLED = _env_bool("CLAWBOT_ENABLED")
+# ClawBot 配置通过 clawbot_config.json 持久化，无需在 .env 中配置 token
+
 # ==================== Telegram ====================
 
 TELEGRAM_BOT_TOKEN = _env("TELEGRAM_BOT_TOKEN")

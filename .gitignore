@@ -65,6 +65,9 @@ debug_page.py
 quick_test.py
 check_lock.py
 
+# 凭据配置文件
+clawbot_config.json
+
 # 个人文件
 *简历*.docx
 *简历*.pdf

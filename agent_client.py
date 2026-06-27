@@ -675,6 +675,14 @@ class AgentClient:
 
 
 def main():
+    # 支持命令行参数: python agent_client.py [BRAIN_URL] [AGENT_NAME]
+    global BRAIN_URL, AGENT_NAME, AGENT_ID
+    if len(sys.argv) > 1:
+        BRAIN_URL = sys.argv[1]
+    if len(sys.argv) > 2:
+        AGENT_NAME = sys.argv[2]
+        AGENT_ID = f"agent_{AGENT_NAME.lower().replace('-','_')}"
+
     agent = AgentClient()
     agent.run()
 
