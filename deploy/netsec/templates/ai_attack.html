@@ -22,7 +22,6 @@
         .attack-layout { grid-template-columns: 1fr; }
     }
 
-    /* 对话区 */
     .chat-panel {
         display: flex;
         flex-direction: column;
@@ -133,45 +132,45 @@
     .chat-input-row button:hover { opacity: 0.9; }
     .chat-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* 右侧面板 */
     .side-panel {
         display: flex;
         flex-direction: column;
         gap: 12px;
     }
     .side-card {
-        background: #fff;
+        background: #181825;
         border-radius: 12px;
         padding: 16px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #313244;
     }
     .side-card h6 {
         font-weight: 700;
         margin-bottom: 10px;
         font-size: 14px;
+        color: #cdd6f4;
     }
     .quick-btn {
         display: block;
         width: 100%;
         text-align: left;
         padding: 8px 12px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #313244;
         border-radius: 8px;
-        background: #f9fafb;
-        color: #374151;
+        background: #1e1e2e;
+        color: #cdd6f4;
         font-size: 13px;
         margin-bottom: 6px;
         cursor: pointer;
         transition: all 0.15s;
     }
     .quick-btn:hover {
-        background: #eff6ff;
-        border-color: #93c5fd;
-        color: #2563eb;
+        background: #313244;
+        border-color: #89b4fa;
+        color: #89b4fa;
     }
     .result-block {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
+        background: rgba(166,227,161,0.1);
+        border: 1px solid rgba(166,227,161,0.3);
         border-radius: 8px;
         padding: 10px;
         font-size: 12px;
@@ -180,7 +179,7 @@
         overflow-y: auto;
         white-space: pre-wrap;
         word-break: break-all;
-        color: #166534;
+        color: #a6e3a1;
     }
     .typing-indicator {
         display: none;
@@ -214,9 +213,71 @@
         font-size: 11px;
         font-weight: 600;
     }
-    .model-deepseek { background: #dbeafe; color: #1d4ed8; }
-    .model-ollama { background: #fef3c7; color: #92400e; }
-    .model-fallback { background: #f3f4f6; color: #6b7280; }
+    .model-deepseek { background: rgba(137,180,250,0.2); color: #89b4fa; }
+    .model-ollama { background: rgba(249,226,175,0.2); color: #f9e2af; }
+    .model-fallback { background: rgba(166,173,200,0.2); color: #a6adc8; }
+
+    .vuln-card {
+        background: #1e1e2e;
+        border: 1px solid #313244;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .vuln-card:hover { border-color: #f38ba8; }
+    .vuln-card .vuln-id { font-size: 12px; color: #f38ba8; font-family: monospace; }
+    .vuln-card .vuln-name { font-size: 13px; color: #cdd6f4; font-weight: 600; }
+    .vuln-card .vuln-severity { 
+        display: inline-block; 
+        font-size: 10px; 
+        padding: 2px 6px; 
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+    .vuln-card .severity-critical { background: rgba(243,139,168,0.2); color: #f38ba8; }
+    .vuln-card .severity-high { background: rgba(249,226,175,0.2); color: #f9e2af; }
+    .vuln-card .severity-medium { background: rgba(137,180,250,0.2); color: #89b4fa; }
+
+    .attack-step {
+        background: #1e1e2e;
+        border-left: 3px solid #89b4fa;
+        border-radius: 0 8px 8px 0;
+        padding: 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+    .attack-step .step-num { font-weight: 700; color: #89b4fa; }
+    .attack-step .step-title { font-weight: 600; color: #cdd6f4; }
+    .attack-step .step-desc { color: #a6adc8; font-size: 12px; margin-top: 4px; }
+    .attack-step .step-cmd { 
+        background: #11111b; 
+        padding: 6px; 
+        border-radius: 4px; 
+        font-family: monospace; 
+        font-size: 11px; 
+        color: #a6e3a1; 
+        margin-top: 4px;
+        word-break: break-all;
+    }
+    .attack-step .step-risk { 
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+    .attack-step .risk-high { background: rgba(243,139,168,0.2); color: #f38ba8; }
+    .attack-step .risk-medium { background: rgba(249,226,175,0.2); color: #f9e2af; }
+    .attack-step .risk-low { background: rgba(166,227,161,0.2); color: #a6e3a1; }
+
+    .success-rate {
+        font-size: 28px;
+        font-weight: 700;
+        color: #a6e3a1;
+    }
+    .rate-label { font-size: 12px; color: #a6adc8; }
 </style>
 {% endblock %}
 
@@ -281,9 +342,7 @@
         </div>
     </div>
 
-    <!-- 右侧面板 -->
     <div class="side-panel">
-        <!-- 快速操作 -->
         <div class="side-card">
             <h6><i class="bi bi-lightning-charge-fill me-1"></i>快速操作</h6>
             <button class="quick-btn" onclick="quickAsk('扫描 127.0.0.1 的常用端口')">
@@ -306,25 +365,23 @@
             </button>
         </div>
 
-        <!-- 目标信息 -->
         <div class="side-card">
             <h6><i class="bi bi-bullseye me-1"></i>目标设置</h6>
             <div class="mb-2">
-                <label class="form-label small fw-bold">目标 IP/域名</label>
+                <label class="form-label small fw-bold text-secondary">目标 IP/域名</label>
                 <input type="text" class="form-control form-control-sm" id="targetInput"
-                       placeholder="例: 192.168.1.1 或 example.com">
+                       placeholder="例: 192.168.1.1 或 example.com" style="background:#1e1e2e;border-color:#313244;color:#cdd6f4;">
             </div>
             <div class="mb-2">
-                <label class="form-label small fw-bold">端口范围</label>
+                <label class="form-label small fw-bold text-secondary">端口范围</label>
                 <input type="text" class="form-control form-control-sm" id="portInput"
-                       placeholder="例: 1-1024 或 80,443,8080" value="1-1024">
+                       placeholder="例: 1-1024 或 80,443,8080" value="1-1024" style="background:#1e1e2e;border-color:#313244;color:#cdd6f4;">
             </div>
-            <button class="btn btn-sm btn-outline-primary w-100" onclick="quickScan()">
+            <button class="btn btn-sm btn-outline-primary w-100" onclick="quickScan()" style="border-color:#89b4fa;color:#89b4fa;">
                 <i class="bi bi-search me-1"></i>快速扫描
             </button>
         </div>
 
-        <!-- 执行结果 -->
         <div class="side-card">
             <h6><i class="bi bi-terminal me-1"></i>操作结果</h6>
             <div class="result-block" id="resultBlock">
@@ -332,13 +389,12 @@
             </div>
         </div>
 
-        <!-- 提示 -->
-        <div class="side-card" style="background:#fffbeb;border-color:#fde68a;">
+        <div class="side-card" style="background:rgba(249,226,175,0.1);border-color:rgba(249,226,175,0.3);">
             <h6 class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>重要提示</h6>
-            <small class="text-muted">
+            <small class="text-muted" style="color:#a6adc8;">
                 所有攻击操作仅限在授权的靶场环境中进行。请勿对未授权的目标进行渗透测试。
                 <br><br>
-                <strong>推荐靶场:</strong>
+                <strong style="color:#cdd6f4;">推荐靶场:</strong>
                 <br>• DVWA 漏洞练习（平台内置）
                 <br>• Metasploitable2
                 <br>• Vulhub Docker 靶场

@@ -314,6 +314,14 @@ def migrate_users_table():
         conn.close()
 
 
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
+
+
 @app.before_request
 def init_db_once():
     global DB_READY
@@ -326,8 +334,10 @@ def init_db_once():
     except Exception as e:
         app_logger.error(f"数据库初始化失败: {e}\n{_traceback.format_exc()}")
         # 不设置 DB_READY，让后续请求继续重试
-        # 跳过静态文件请求的错误提示
-        if not request.path.startswith(f"{APPLICATION_ROOT}/static") and request.path != f"{APPLICATION_ROOT}/api/health":
+        # 跳过静态文件、系统监控和漏洞数据库请求的错误提示
+        path = request.path
+        skip_paths = ["/static", "/api/health", "/system-monitor", "/api/system-monitor", "/api/vuln"]
+        if not any(path.startswith(p) for p in skip_paths):
             return (
                 "<h1>503 - 服务暂时不可用</h1>"
                 "<p>数据库连接失败，请稍后重试或联系管理员。</p>"
@@ -1155,6 +1165,10 @@ from security_scan_levels import (
     create_scan_task, get_task_status, get_task_result,
     get_level_config, SCAN_LEVELS,
 )
+
+from system_monitor import system_monitor
+from vuln_exploit_db import ExploitDB
+from ai_attack_engine import attack_engine
 
 
 @app.route("/scan/security-scan")
@@ -3240,6 +3254,168 @@ def api_health():
 
 
 # =========================
+# 系统监控模块
+# =========================
+
+@app.route("/system-monitor")
+def system_monitor_page():
+    """系统监控仪表盘页面"""
+    response = render_template("system_monitor.html")
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
+@app.route("/api/system-monitor/status")
+def api_system_monitor_status():
+    """获取系统健康状态"""
+    return jsonify(system_monitor.get_health_status())
+
+
+@app.route("/api/system-monitor/cpu")
+def api_system_monitor_cpu():
+    """获取 CPU 信息"""
+    return jsonify(system_monitor.get_cpu_info())
+
+
+@app.route("/api/system-monitor/memory")
+def api_system_monitor_memory():
+    """获取内存信息"""
+    return jsonify(system_monitor.get_memory_info())
+
+
+@app.route("/api/system-monitor/disk")
+def api_system_monitor_disk():
+    """获取磁盘信息"""
+    return jsonify(system_monitor.get_disk_info())
+
+
+@app.route("/api/system-monitor/network")
+def api_system_monitor_network():
+    """获取网络信息"""
+    return jsonify(system_monitor.get_network_info())
+
+
+@app.route("/api/system-monitor/processes")
+def api_system_monitor_processes():
+    """获取进程信息"""
+    limit = request.args.get("limit", 10, type=int)
+    return jsonify(system_monitor.get_process_info(limit=limit))
+
+
+@app.route("/api/system-monitor/system")
+def api_system_monitor_system():
+    """获取系统信息"""
+    return jsonify(system_monitor.get_system_info())
+
+
+@app.route("/api/system-monitor/full")
+def api_system_monitor_full():
+    """获取完整系统状态"""
+    return jsonify(system_monitor.get_full_status())
+
+
+# =========================
+# AI 攻击引擎 API
+# =========================
+
+@app.route("/api/ai-attack/analyze", methods=["POST"])
+def api_ai_attack_analyze():
+    """分析扫描结果生成攻击计划"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "缺少请求数据"}), 400
+
+    scan_data = data.get("scan_data", {})
+    if not scan_data:
+        return jsonify({"success": False, "error": "缺少扫描数据"}), 400
+
+    try:
+        plan = attack_engine.generate_attack_plan(scan_data)
+        return jsonify({"success": True, "plan": plan.to_dict()})
+    except Exception as e:
+        app_logger.error(f"AI攻击分析失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/ai-attack/plan/<plan_id>")
+@login_required
+def api_ai_attack_plan(plan_id):
+    """获取攻击计划详情"""
+    plan = attack_engine.get_attack_plan(plan_id)
+    if not plan:
+        return jsonify({"error": "攻击计划不存在"}), 404
+    return jsonify({"success": True, "plan": plan.to_dict()})
+
+
+@app.route("/api/ai-attack/simulate/<plan_id>", methods=["POST"])
+@login_required
+def api_ai_attack_simulate(plan_id):
+    """模拟攻击过程"""
+    try:
+        result = attack_engine.simulate_attack(plan_id)
+        if "error" in result:
+            return jsonify({"success": False, **result}), 404
+        return jsonify({"success": True, **result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/ai-attack/plans")
+@login_required
+def api_ai_attack_plans():
+    """列出所有攻击计划"""
+    plans = attack_engine.list_attack_plans()
+    return jsonify({"success": True, "plans": plans})
+
+
+# =========================
+# 漏洞数据库 API
+# =========================
+
+@app.route("/api/vuln/search")
+def api_vuln_search():
+    """搜索漏洞数据库"""
+    keyword = request.args.get("keyword", "").strip()
+    severity = request.args.get("severity", "").strip()
+
+    if keyword:
+        results = ExploitDB.search_by_keyword(keyword)
+    elif severity:
+        results = ExploitDB.search_by_severity(severity)
+    else:
+        results = ExploitDB.get_all_vulnerabilities()
+
+    return jsonify({"success": True, "results": results, "count": len(results)})
+
+
+@app.route("/api/vuln/detail/<cve_id>")
+def api_vuln_detail(cve_id):
+    """获取漏洞详情"""
+    vuln = ExploitDB.get_vulnerability(cve_id)
+    if not vuln:
+        return jsonify({"success": False, "error": "漏洞不存在"}), 404
+    return jsonify({"success": True, "cve_id": cve_id, **vuln})
+
+
+@app.route("/api/vuln/stats")
+def api_vuln_stats():
+    """获取漏洞统计信息"""
+    stats = ExploitDB.get_severity_stats()
+    top_vulns = ExploitDB.get_top_vulnerabilities()
+    return jsonify({"success": True, "stats": stats, "top_vulnerabilities": top_vulns})
+
+
+@app.route("/api/vuln/top")
+def api_vuln_top():
+    """获取最严重的漏洞"""
+    count = request.args.get("count", 5, type=int)
+    results = ExploitDB.get_top_vulnerabilities(count=count)
+    return jsonify({"success": True, "results": results})
+
+
+# =========================
 # 支付/会员系统（已隐藏，待后续启用）
 # =========================
 
@@ -3271,4 +3447,4 @@ if __name__ == "__main__":
     host = os.getenv("NETSEC_HOST", "0.0.0.0")
     port = int(os.getenv("NETSEC_PORT", "5100"))
     debug = os.getenv("NETSEC_DEBUG", "false").lower() == "true"
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug, threaded=True)

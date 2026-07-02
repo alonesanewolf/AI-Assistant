@@ -1,0 +1,591 @@
+{% extends "base.html" %}
+{% block title %}系统监控 - 网络安全助手{% endblock %}
+{% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+    :root {
+        --bg-dark: #1e1e2e;
+        --card-bg: #181825;
+        --border: #313244;
+        --text-primary: #cdd6f4;
+        --text-secondary: #a6adc8;
+        --success: #a6e3a1;
+        --warning: #f9e2af;
+        --danger: #f38ba8;
+        --info: #89b4fa;
+        --accent: #cba6f7;
+    }
+    .monitor-container {
+        padding: 0;
+    }
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.2s;
+    }
+    .stat-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 12px;
+    }
+    .stat-icon.cpu { background: rgba(137,180,250,0.15); color: var(--info); }
+    .stat-icon.memory { background: rgba(203,166,247,0.15); color: var(--accent); }
+    .stat-icon.disk { background: rgba(166,227,161,0.15); color: var(--success); }
+    .stat-icon.network { background: rgba(249,226,175,0.15); color: var(--warning); }
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+    .progress-bar-container {
+        height: 8px;
+        background: #313244;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    .progress-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    .progress-bar.success { background: var(--success); }
+    .progress-bar.warning { background: var(--warning); }
+    .progress-bar.danger { background: var(--danger); }
+    .progress-bar.info { background: var(--info); }
+    
+    .health-badge {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .health-badge.good { background: rgba(166,227,161,0.2); color: var(--success); }
+    .health-badge.warning { background: rgba(249,226,175,0.2); color: var(--warning); }
+    .health-badge.danger { background: rgba(243,139,168,0.2); color: var(--danger); }
+
+    .table-dark {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+    }
+    .table-dark th, .table-dark td {
+        border-color: var(--border);
+        color: var(--text-primary);
+    }
+    .table-dark th {
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .table-dark tbody tr:hover {
+        background: rgba(137,180,250,0.05);
+    }
+
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { color: var(--text-secondary); }
+    .metric-value { color: var(--text-primary); font-weight: 600; }
+
+    .chart-container {
+        height: 200px;
+        position: relative;
+    }
+    .mini-chart {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        padding: 4px;
+    }
+    .chart-bar {
+        flex: 1;
+        background: var(--info);
+        border-radius: 2px 2px 0 0;
+        min-height: 4px;
+        transition: height 0.2s;
+    }
+
+    .refresh-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .refresh-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+    .refresh-btn i { animation: none; }
+    .refresh-btn.active i { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .issue-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: rgba(243,139,168,0.15);
+        color: var(--danger);
+        border-radius: 6px;
+        font-size: 12px;
+        margin-right: 6px;
+        margin-bottom: 4px;
+    }
+
+    .speed-value {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+        .stat-value { font-size: 24px; }
+        .stat-icon { width: 40px; height: 40px; font-size: 18px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2><i class="bi bi-cpu me-2"></i>系统监控</h2>
+        <p class="text-muted mb-0">
+            实时监控系统资源使用情况，包括 CPU、内存、磁盘、网络和进程状态。
+        </p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <div id="healthBadge" class="health-badge good">
+            <i class="bi bi-check-circle me-1"></i>健康
+        </div>
+        <button id="refreshBtn" class="refresh-btn" onclick="refreshData()">
+            <i class="bi bi-arrow-clockwise"></i>刷新
+        </button>
+    </div>
+</div>
+
+<div class="monitor-container mt-4">
+    <!-- 健康状态卡片 -->
+    <div class="stat-card mb-4">
+        <div class="d-flex flex-wrap items-center gap-4">
+            <div>
+                <div class="stat-label">系统健康评分</div>
+                <div class="stat-value" id="healthScore">--</div>
+            </div>
+            <div class="flex-grow-1" style="max-width: 300px;">
+                <div class="stat-label">健康度</div>
+                <div class="progress-bar-container">
+                    <div id="healthProgress" class="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div id="systemIssues" class="flex-grow-1">
+                <div class="stat-label">系统问题</div>
+                <div id="issuesList">暂无问题</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心指标卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon cpu"><i class="bi bi-cpu-fill"></i></div>
+                <div class="stat-value" id="cpuUsage">--%</div>
+                <div class="stat-label">CPU 使用率</div>
+                <div class="progress-bar-container">
+                    <div id="cpuProgress" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 text-xs text-muted" id="cpuDetails">核心数: --</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon memory"><i class="bi bi-memory-stick"></i></div>
+                <div class="stat-value" id="memUsage">--%</div>
+                <div class="stat-label">内存使用率</div>
+                <div class="progress-bar-container">
+                    <div id="memProgress" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 text-xs text-muted" id="memDetails">已用: -- / --</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon disk"><i class="bi bi-hard-drive-fill"></i></div>
+                <div class="stat-value" id="diskUsage">--%</div>
+                <div class="stat-label">磁盘使用率</div>
+                <div class="progress-bar-container">
+                    <div id="diskProgress" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 text-xs text-muted" id="diskDetails">已用: -- / --</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon network"><i class="bi bi-wifi"></i></div>
+                <div class="stat-value">
+                    <span id="netUpload">--</span><br>
+                    <span class="text-xs text-muted">↑ 上传</span>
+                </div>
+                <div class="stat-label" style="margin-top: 4px;">
+                    <span id="netDownload">--</span>
+                    <span class="text-xs text-muted">↓ 下载</span>
+                </div>
+                <div class="mt-2 text-xs text-muted" id="netConnections">连接数: --</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：系统信息和进程 -->
+        <div class="col-lg-6">
+            <!-- 系统信息 -->
+            <div class="stat-card mb-4">
+                <h5 class="text-sm font-bold mb-3 text-secondary">系统信息</h5>
+                <div id="systemInfo">
+                    <div class="metric-row"><span class="metric-label">操作系统</span><span class="metric-value" id="osName">--</span></div>
+                    <div class="metric-row"><span class="metric-label">内核版本</span><span class="metric-value" id="osKernel">--</span></div>
+                    <div class="metric-row"><span class="metric-label">Python 版本</span><span class="metric-value" id="pythonVersion">--</span></div>
+                    <div class="metric-row"><span class="metric-label">主机名</span><span class="metric-value" id="hostname">--</span></div>
+                    <div class="metric-row"><span class="metric-label">开机时间</span><span class="metric-value" id="bootTime">--</span></div>
+                    <div class="metric-row"><span class="metric-label">运行时长</span><span class="metric-value" id="uptime">--</span></div>
+                </div>
+            </div>
+
+            <!-- 进程列表 -->
+            <div class="stat-card">
+                <div class="d-flex justify-content-between items-center mb-3">
+                    <h5 class="text-sm font-bold text-secondary">进程占用 Top 10</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-xs btn-outline-light" onclick="loadProcesses('cpu')">CPU排序</button>
+                        <button class="btn btn-xs btn-outline-light" onclick="loadProcesses('memory')">内存排序</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-sm">
+                        <thead>
+                            <tr>
+                                <th>进程名</th>
+                                <th>PID</th>
+                                <th>CPU%</th>
+                                <th>内存%</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processTable">
+                            <tr><td colspan="5" class="text-center text-muted">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：磁盘和网络 -->
+        <div class="col-lg-6">
+            <!-- 磁盘分区 -->
+            <div class="stat-card mb-4">
+                <h5 class="text-sm font-bold mb-3 text-secondary">磁盘分区</h5>
+                <div id="diskPartitions">
+                    <div class="text-center text-muted">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 网络接口 -->
+            <div class="stat-card">
+                <h5 class="text-sm font-bold mb-3 text-secondary">网络接口</h5>
+                <div id="networkInterfaces">
+                    <div class="text-center text-muted">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+let refreshInterval = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadFullData();
+});
+
+function startAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(refreshData, 8000);
+}
+
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
+async function refreshData() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('active');
+    try {
+        await loadFullData();
+    } finally {
+        btn.classList.remove('active');
+    }
+}
+
+async function loadFullData() {
+    try {
+        const resp = await fetch('{{ url_for("api_system_monitor_full") }}');
+        const fullData = await resp.json();
+        
+        updateHealth(fullData.health);
+        updateCPU(fullData.cpu);
+        updateMemory(fullData.memory);
+        updateDisk(fullData.disk);
+        updateNetwork(fullData.network);
+        updateSystemInfo(fullData.system);
+        
+        if (fullData.processes && fullData.processes.success) {
+            const container = document.getElementById('processTable');
+            container.innerHTML = fullData.processes.top_cpu.map(p => {
+                return `<tr>
+                    <td>${p.name}</td>
+                    <td>${p.pid}</td>
+                    <td>${p.cpu_percent.toFixed(1)}%</td>
+                    <td>${p.memory_percent.toFixed(1)}%</td>
+                    <td><span class="badge bg-secondary">${p.status}</span></td>
+                </tr>`;
+            }).join('');
+        }
+    } catch (e) {
+        console.error('加载数据失败:', e);
+    }
+}
+
+function updateHealth(data) {
+    if (!data.success) return;
+    const score = data.health_score;
+    document.getElementById('healthScore').textContent = score + '/100';
+    document.getElementById('healthProgress').style.width = score + '%';
+    
+    let statusClass = 'good';
+    let statusText = '健康';
+    if (score >= 80) {
+        statusClass = 'good';
+        statusText = '健康';
+    } else if (score >= 60) {
+        statusClass = 'good';
+        statusText = '良好';
+    } else if (score >= 40) {
+        statusClass = 'warning';
+        statusText = '警告';
+    } else {
+        statusClass = 'danger';
+        statusText = '危险';
+    }
+    
+    const badge = document.getElementById('healthBadge');
+    badge.className = 'health-badge ' + statusClass;
+    badge.innerHTML = '<i class="bi bi-check-circle me-1"></i>' + statusText;
+    
+    const issues = data.issues || [];
+    const issuesList = document.getElementById('issuesList');
+    if (issues.length === 0) {
+        issuesList.innerHTML = '<span class="text-success">暂无问题</span>';
+    } else {
+        issuesList.innerHTML = issues.map(i => '<span class="issue-badge">' + i + '</span>').join('');
+    }
+}
+
+function updateCPU(data) {
+    if (!data.success) return;
+    const usage = data.total_usage;
+    document.getElementById('cpuUsage').textContent = usage + '%';
+    document.getElementById('cpuProgress').style.width = usage + '%';
+    document.getElementById('cpuProgress').className = getProgressClass(usage);
+    document.getElementById('cpuDetails').textContent = 
+        `核心数: ${data.physical_cores} 物理 / ${data.logical_cores} 逻辑`;
+}
+
+function updateMemory(data) {
+    if (!data.success) return;
+    const usage = data.usage_percent;
+    const usedGB = (data.used / 1024 / 1024 / 1024).toFixed(2);
+    const totalGB = (data.total / 1024 / 1024 / 1024).toFixed(2);
+    
+    document.getElementById('memUsage').textContent = usage + '%';
+    document.getElementById('memProgress').style.width = usage + '%';
+    document.getElementById('memProgress').className = getProgressClass(usage);
+    document.getElementById('memDetails').textContent = 
+        `已用: ${usedGB} GB / ${totalGB} GB`;
+}
+
+function updateDisk(data) {
+    if (!data.success) return;
+    let maxUsage = 0;
+    let maxUsed = 0;
+    let maxTotal = 0;
+    
+    const partitions = data.partitions || [];
+    partitions.forEach(p => {
+        if (p.usage_percent > maxUsage) {
+            maxUsage = p.usage_percent;
+            maxUsed = p.used;
+            maxTotal = p.total;
+        }
+    });
+    
+    const usedGB = (maxUsed / 1024 / 1024 / 1024).toFixed(2);
+    const totalGB = (maxTotal / 1024 / 1024 / 1024).toFixed(2);
+    
+    document.getElementById('diskUsage').textContent = maxUsage + '%';
+    document.getElementById('diskProgress').style.width = maxUsage + '%';
+    document.getElementById('diskProgress').className = getProgressClass(maxUsage);
+    document.getElementById('diskDetails').textContent = 
+        `已用: ${usedGB} GB / ${totalGB} GB`;
+    
+    renderDiskPartitions(partitions);
+}
+
+function renderDiskPartitions(partitions) {
+    const container = document.getElementById('diskPartitions');
+    if (!partitions || partitions.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">无磁盘信息</div>';
+        return;
+    }
+    
+    container.innerHTML = partitions.map(p => {
+        const usedGB = (p.used / 1024 / 1024 / 1024).toFixed(2);
+        const totalGB = (p.total / 1024 / 1024 / 1024).toFixed(2);
+        const usage = p.usage_percent;
+        const progressClass = getProgressClass(usage);
+        
+        return `<div class="mb-3 last:mb-0">
+            <div class="d-flex justify-content-between text-sm mb-1">
+                <span class="text-secondary">${p.mountpoint}</span>
+                <span class="text-primary">${usedGB} / ${totalGB} GB (${usage}%)</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar ${progressClass}" style="width: ${usage}%"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function updateNetwork(data) {
+    if (!data.success) return;
+    
+    const uploadSpeed = formatBytes(data.speed?.upload_speed || 0) + '/s';
+    const downloadSpeed = formatBytes(data.speed?.download_speed || 0) + '/s';
+    
+    document.getElementById('netUpload').textContent = uploadSpeed;
+    document.getElementById('netDownload').textContent = downloadSpeed;
+    document.getElementById('netConnections').textContent = 
+        `连接数: ${data.connections || 0}`;
+    
+    renderNetworkInterfaces(data.interfaces || []);
+}
+
+function renderNetworkInterfaces(interfaces) {
+    const container = document.getElementById('networkInterfaces');
+    if (!interfaces || interfaces.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted">无网络接口信息</div>';
+        return;
+    }
+    
+    container.innerHTML = interfaces.map(iface => {
+        const sent = formatBytes(iface.bytes_sent || 0);
+        const recv = formatBytes(iface.bytes_recv || 0);
+        const status = iface.is_up ? '<span class="text-success">✓</span>' : '<span class="text-muted">✗</span>';
+        
+        return `<div class="d-flex justify-content-between items-center py-2 border-b border-gray-700 last:border-0">
+            <div>
+                <div class="text-primary text-sm">${iface.name}</div>
+                <div class="text-secondary text-xs">${iface.ip_address || '无IP'}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-muted">↑ ${sent}</div>
+                <div class="text-xs text-muted">↓ ${recv}</div>
+            </div>
+            <div class="ml-2">${status}</div>
+        </div>`;
+    }).join('');
+}
+
+function updateSystemInfo(data) {
+    if (!data.success) return;
+    document.getElementById('osName').textContent = data.os + ' ' + data.os_release;
+    document.getElementById('osKernel').textContent = data.os_version;
+    document.getElementById('pythonVersion').textContent = data.python_version;
+    document.getElementById('hostname').textContent = data.hostname;
+    document.getElementById('bootTime').textContent = data.boot_time_str;
+    document.getElementById('uptime').textContent = data.uptime_str;
+}
+
+async function loadProcesses(sortBy) {
+    try {
+        const resp = await fetch('{{ url_for("api_system_monitor_full") }}');
+        const fullData = await resp.json();
+        
+        if (!fullData.processes || !fullData.processes.success) return;
+        
+        const container = document.getElementById('processTable');
+        const processes = sortBy === 'cpu' ? fullData.processes.top_cpu : fullData.processes.top_memory;
+        
+        container.innerHTML = processes.map(p => {
+            return `<tr>
+                <td>${p.name}</td>
+                <td>${p.pid}</td>
+                <td>${p.cpu_percent.toFixed(1)}%</td>
+                <td>${p.memory_percent.toFixed(1)}%</td>
+                <td><span class="badge bg-secondary">${p.status}</span></td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('加载进程失败:', e);
+    }
+}
+
+function getProgressClass(usage) {
+    if (usage >= 90) return 'progress-bar danger';
+    if (usage >= 70) return 'progress-bar warning';
+    return 'progress-bar success';
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+</script>
+{% endblock %}

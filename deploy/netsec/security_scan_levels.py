@@ -3,7 +3,7 @@
 =================================
 低 (LOW)    : 基础端口扫描（常见端口）+ 基本信息收集
 中 (MEDIUM) : 端口扫描(1-1024) + WAF检测 + 指纹识别 + 子域名枚举
-高 (HIGH)   : 全端口扫描(1-65535) + WAF + 指纹 + 子域名 + Web目录扫描 + 漏洞评估报告
+高 (HIGH)   : 全端口扫描(1-65535) + WAF + 指纹 + 子域名 + Web目录扫描 + AI漏洞评估
 """
 
 import socket
@@ -15,6 +15,7 @@ from typing import Optional, Callable
 
 from NetSecAssistant import NetSecAssistant
 import network_scan
+from vuln_exploit_db import ExploitDB
 
 
 # =========================
@@ -354,10 +355,11 @@ class SecurityScanEngine:
         return {"directories": results, "count": len(results), "total_tested": len(DEFAULT_DICT)}
 
     def _step_vuln_assessment(self, scan_data: dict) -> dict:
-        """漏洞评估报告"""
-        self._report_progress(88, "生成漏洞评估报告...")
+        """漏洞评估报告 - AI 驱动的智能漏洞分析"""
+        self._report_progress(88, "AI 漏洞评估中...")
 
         findings = []
+        matched_vulns = []
 
         port_scan = scan_data.get("port_scan", {})
         waf = scan_data.get("waf", {})
@@ -443,7 +445,20 @@ class SecurityScanEngine:
                 "suggestion": "进行端口最小化，仅保留业务必需的端口",
             })
 
-        # 7. 安全评分
+        # ========== AI 驱动的漏洞数据库匹配 ==========
+        self._report_progress(92, "AI 漏洞数据库匹配中...")
+
+        matched_vulns = self._match_vulnerabilities(services, fps, web_dirs)
+
+        if matched_vulns:
+            findings.append({
+                "level": "高" if any(v["severity"] == "严重" for v in matched_vulns) else "中",
+                "title": f"AI 检测到 {len(matched_vulns)} 个匹配漏洞",
+                "detail": f"基于漏洞数据库分析，发现 {len([v for v in matched_vulns if v['severity'] in ['严重', '高危']])} 个高危漏洞",
+                "suggestion": "建议参考漏洞详情进行修复，关注严重级别漏洞",
+            })
+
+        # 7. 安全评分（包含 AI 漏洞评估）
         base_score = 100
         if high_risk_ports:
             base_score -= len(high_risk_ports) * 10
@@ -459,6 +474,15 @@ class SecurityScanEngine:
             base_score -= min(15, (open_count - 20) * 2)
         if info_leak_fps:
             base_score -= len(info_leak_fps) * 2
+        
+        # AI 漏洞评分影响
+        for vuln in matched_vulns:
+            if vuln["severity"] == "严重":
+                base_score -= 15
+            elif vuln["severity"] == "高危":
+                base_score -= 10
+            elif vuln["severity"] == "中危":
+                base_score -= 5
 
         score = max(0, min(100, base_score))
         if score >= 80:
@@ -486,7 +510,113 @@ class SecurityScanEngine:
             "security_score": score,
             "security_grade": grade,
             "grade_text": grade_text,
+            "matched_vulnerabilities": matched_vulns,
+            "matched_vulns_count": len(matched_vulns),
         }
+
+    def _match_vulnerabilities(self, services: list, fingerprints: list, web_dirs: list) -> list:
+        """AI 漏洞数据库匹配 - 根据服务和指纹信息匹配已知漏洞"""
+        matched_vulns = []
+        matched_ids = set()
+
+        # 服务名称匹配
+        for service in services:
+            service_name = service.get("service", "").lower()
+            
+            if "redis" in service_name:
+                vuln = ExploitDB.get_vulnerability("CVE-2015-8080")
+                if vuln and "CVE-2015-8080" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2015-8080")
+            
+            elif "smb" in service_name or service.get("port") == 445:
+                vuln = ExploitDB.get_vulnerability("CVE-2017-0144")
+                if vuln and "CVE-2017-0144" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2017-0144")
+            
+            elif "mysql" in service_name or service.get("port") == 3306:
+                vuln = ExploitDB.get_vulnerability("CVE-2020-2574")
+                if vuln and "CVE-2020-2574" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2020-2574")
+            
+            elif service.get("port") == 3389:
+                vuln = ExploitDB.get_vulnerability("CVE-2019-0708")
+                if vuln and "CVE-2019-0708" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2019-0708")
+
+        # Banner 版本信息匹配
+        for fp in fingerprints:
+            banner = str(fp.get("banner", "")).lower()
+            port = fp.get("port", 0)
+            
+            if "phpmyadmin" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-12613")
+                if vuln and "CVE-2018-12613" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-12613")
+            
+            elif "jenkins" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-1000861")
+                if vuln and "CVE-2018-1000861" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-1000861")
+            
+            elif "glassfish" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2019-17568")
+                if vuln and "CVE-2019-17568" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2019-17568")
+            
+            elif "spring" in banner or "actuator" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-1270")
+                if vuln and "CVE-2018-1270" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-1270")
+            
+            elif "log4j" in banner or "log4" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2021-44228")
+                if vuln and "CVE-2021-44228" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2021-44228")
+            
+            elif "nginx/1.0" in banner or "nginx/1.1" in banner:
+                vuln = ExploitDB.get_vulnerability("CVE-2013-4548")
+                if vuln and "CVE-2013-4548" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2013-4548")
+
+        # Web 目录匹配
+        for web_dir in web_dirs:
+            path = web_dir.get("path", "").lower()
+            
+            if "phpmyadmin" in path:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-12613")
+                if vuln and "CVE-2018-12613" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-12613")
+            
+            elif "jenkins" in path:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-1000861")
+                if vuln and "CVE-2018-1000861" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-1000861")
+            
+            elif "actuator" in path:
+                vuln = ExploitDB.get_vulnerability("CVE-2018-1270")
+                if vuln and "CVE-2018-1270" not in matched_ids:
+                    matched_vulns.append(vuln)
+                    matched_ids.add("CVE-2018-1270")
+
+        # 添加 CVE 编号
+        for i, vuln in enumerate(matched_vulns):
+            matched_vulns[i]["cve_id"] = list(ExploitDB.VULNERABILITIES.keys())[
+                list(ExploitDB.VULNERABILITIES.values()).index(vuln)
+            ] if vuln in ExploitDB.VULNERABILITIES.values() else "Unknown"
+
+        return matched_vulns
 
     def run(self):
         """执行完整扫描流程"""
