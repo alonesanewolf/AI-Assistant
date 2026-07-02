@@ -137,27 +137,33 @@ class ModelRouter:
             from openai import OpenAI
 
             if model_key == "deepseek":
+                import httpx
                 self._clients[model_key] = OpenAI(
                     api_key=DEEPSEEK_API_KEY,
                     base_url=DEEPSEEK_BASE_URL,
-                    timeout=30,
+                    timeout=httpx.Timeout(10.0, connect=5.0),
+                    max_retries=0,
                 )
             elif model_key == "ollama":
+                import httpx as _httpx_ollama
                 self._clients[model_key] = OpenAI(
                     api_key="ollama",  # Ollama 不需要真实 key
                     base_url=OLLAMA_BASE_URL,
-                    timeout=120,  # 本地模型可能较慢
+                    timeout=_httpx_ollama.Timeout(30.0, connect=5.0),
+                    max_retries=0,
                 )
             elif model_key == "fallback":
+                import httpx as _httpx_fallback
                 self._clients[model_key] = OpenAI(
                     api_key=FALLBACK_API_KEY,
                     base_url=FALLBACK_BASE_URL,
-                    timeout=30,
+                    timeout=_httpx_fallback.Timeout(15.0, connect=5.0),
+                    max_retries=0,
                 )
         return self._clients[model_key]
 
     def check_available(self, model_key: str) -> bool:
-        """检查模型是否可用（带缓存）"""
+        """检查模型是否可用（带缓存，3秒超时保护）"""
         now = time.time()
         if model_key in self._available:
             if now - self._last_check.get(model_key, 0) < self._check_interval:
@@ -165,7 +171,8 @@ class ModelRouter:
 
         try:
             client = self._get_client(model_key)
-            client.models.list()  # 快速检查
+            # 用超时包装防止 models.list() 阻塞
+            client.models.list(timeout=3)
             self._available[model_key] = True
         except Exception:
             self._available[model_key] = False

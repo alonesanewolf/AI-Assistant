@@ -369,6 +369,9 @@ async function sendMessage() {
     const target = document.getElementById('targetInput').value.trim();
 
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25000);  // 25秒超时
+
         const resp = await fetch('{{ url_for("api_ai_attack_chat") }}', {
             method: 'POST',
             credentials: 'same-origin',
@@ -377,8 +380,10 @@ async function sendMessage() {
                 message: message,
                 session_id: sessionId,
                 target: target,
-            })
+            }),
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         const data = await resp.json();
 
         showTyping(false);
@@ -403,7 +408,11 @@ async function sendMessage() {
         }
     } catch (e) {
         showTyping(false);
-        addMessage('system', '网络错误: ' + e.message);
+        if (e.name === 'AbortError') {
+            addMessage('system', '请求超时，AI 暂时无响应。请稍后重试或尝试其他问题。');
+        } else {
+            addMessage('system', '网络错误: ' + e.message);
+        }
     }
 
     isProcessing = false;

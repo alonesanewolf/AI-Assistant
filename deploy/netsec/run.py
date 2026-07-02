@@ -2,14 +2,36 @@ import string
 import json
 import platform
 import sys
+import os
+import time
 from functools import wraps
 from datetime import datetime, timedelta
 from io import BytesIO
-import os
 import random
 import hashlib
 import uuid
 import pymysql
+
+# 确保能 import 父目录的模块（如 model_router）
+_PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PARENT_DIR not in sys.path:
+    sys.path.insert(0, _PARENT_DIR)
+
+# 加载环境变量（.env 文件或 systemd Environment）
+_env_paths = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'),
+    '/opt/ai_assistant/.env',
+]
+for _env_path in _env_paths:
+    if os.path.exists(_env_path):
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(_env_path)
+            break
+        except ImportError:
+            # dotenv 不可用时，依赖 systemd Environment 变量
+            pass
 
 from flask import (
     Flask,
@@ -86,6 +108,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-me")
 app.permanent_session_lifetime = timedelta(hours=8)
 app.config["SESSION_COOKIE_PATH"] = APPLICATION_ROOT if APPLICATION_ROOT else "/"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 最大请求体 16MB
 
 # =========================
 # 全局错误处理 + 日志
@@ -110,13 +133,8 @@ def internal_error(e):
     """全局 500 错误处理器：记录错误日志并返回友好页面"""
     tb = _traceback.format_exc()
     app_logger.error(f"500 内部错误:\n{tb}")
-    # 尝试回滚数据库（如果处于事务中）
-    try:
-        db = get_db_connection()
-        db.rollback()
-        db.close()
-    except Exception:
-        pass
+    # 不在此处尝试回滚数据库 —— 如果 DB 正出问题，创建新连接会加重故障
+    # 依赖连接池自身的超时回收机制
     return render_template("500.html", error=str(e)) if os.path.exists(
         os.path.join(app.template_folder, "500.html")
     ) else (
@@ -135,13 +153,7 @@ def handle_exception(e):
     tb = _traceback.format_exc()
 
     app_logger.error(f"未捕获异常: {type(e).__name__}: {e}\n{tb}")
-    # 尝试回滚数据库
-    try:
-        db = get_db_connection()
-        db.rollback()
-        db.close()
-    except Exception:
-        pass
+    # 不在此处操作数据库 —— 防止 DB 故障时二次崩溃
     return render_template("500.html", error=str(e)) if os.path.exists(
         os.path.join(app.template_folder, "500.html")
     ) else (
@@ -224,6 +236,7 @@ def get_server_connection():
     return pymysql.connect(
         host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD,
         charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor, autocommit=False,
+        connect_timeout=5, read_timeout=10, write_timeout=10,
     )
 
 
@@ -232,6 +245,7 @@ def get_db_connection():
         host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD,
         database=DB_NAME, charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor, autocommit=False,
+        connect_timeout=5, read_timeout=10, write_timeout=10,
     )
 
 
@@ -386,8 +400,8 @@ def record_login_history(username, login_type, ip_address):
                 (username, login_type, ip_address, browser, os_name, user_agent[:500])
             )
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        app_logger.warning(f"登录历史记录写入失败: {e}")
     finally:
         db.close()
 
@@ -406,8 +420,8 @@ def record_operation_log(username, operation_name, method=None, path=None,
                 (username, operation_name, method, path, params_str, result, execution_time, get_client_ip())
             )
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        app_logger.warning(f"操作日志写入失败: {e}")
     finally:
         db.close()
 
@@ -1071,15 +1085,22 @@ def web_dir_scan_page():
         # 使用 network_scan 中的目录扫描函数
         DEFAULT_DICT = ["admin", "login", "index.php", "backup", "db", "config", ".git", "robots.txt", "wp-admin"]
         results = []
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutureTimeoutError
 
-        with ThreadPoolExecutor(max_workers=workers) as executor:
+        executor = ThreadPoolExecutor(max_workers=workers)
+        try:
             future_map = {executor.submit(network_scan.scan_dir, url, path, timeout): path for path in DEFAULT_DICT}
-            for future in as_completed(future_map):
-                result = future.result()
-                if result:
-                    path, code, size = result
-                    results.append({"path": path, "code": code, "size": size})
+            for future in as_completed(future_map, timeout=30):
+                try:
+                    result = future.result(timeout=10)
+                    if result:
+                        path, code, size = result
+                        results.append({"path": path, "code": code, "size": size})
+                except FutureTimeoutError:
+                    pass  # 单个任务超时，跳过继续
+        except FutureTimeoutError:
+            pass  # 整体超时，返回已有结果
+        executor.shutdown(wait=False)
         results.sort(key=lambda x: x["code"])
     except Exception as e:
         return render_template("web_dir_scan.html", results=None, error=str(e))
@@ -1564,14 +1585,23 @@ def vuln_command_injection():
         if target:
             try:
                 import subprocess
-                cmd = f"ping -n 2 {target}"
-                proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                output, _ = proc.communicate(timeout=10)
-                result = output.decode('gbk', errors='ignore')
-                # 如果包含注入符号则认为通关
-                injected = any(c in target for c in ['&', ';', '|', '&&', '||', '`'])
-                record_vuln_attempt("command_injection", passed=injected)
+                # 限制 target 长度防止命令过长
+                if len(target) > 200:
+                    error = "输入内容过长"
+                else:
+                    cmd = f"ping -n 2 {target}" if sys.platform == "win32" else f"ping -c 2 {target}"
+                    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    try:
+                        output, _ = proc.communicate(timeout=10)
+                        result = output.decode('gbk', errors='ignore')
+                        # 如果包含注入符号则认为通关
+                        injected = any(c in target for c in ['&', ';', '|', '&&', '||', '`'])
+                        record_vuln_attempt("command_injection", passed=injected)
+                    finally:
+                        proc.kill()  # 确保子进程被回收
             except subprocess.TimeoutExpired:
+                proc.kill()  # 超时时强制杀掉子进程
+                proc.wait()
                 error = "命令执行超时"
                 record_vuln_attempt("command_injection", passed=False)
             except Exception as e:
@@ -1632,9 +1662,15 @@ def vuln_file_include():
 
                         if os.path.isfile(target_path):
                             try:
-                                with open(target_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                    content = f.read()
-                                record_vuln_attempt("file_include", passed=True)
+                                # 限制读取文件大小，防止 OOM（最大 500KB）
+                                file_size = os.path.getsize(target_path)
+                                if file_size > 512000:
+                                    error = f"文件过大 ({file_size} 字节)，拒绝读取"
+                                    record_vuln_attempt("file_include", passed=False)
+                                else:
+                                    with open(target_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                        content = f.read(512000)
+                                    record_vuln_attempt("file_include", passed=True)
                             except PermissionError:
                                 error = f"权限不足，无法读取: {filename}"
                                 record_vuln_attempt("file_include", passed=False)
@@ -1678,14 +1714,21 @@ def vuln_file_upload():
             else:
                 try:
                     filename = file.filename
-                    filepath = os.path.join(upload_dir, filename)
-                    file.save(filepath)
-                    success = {
-                        'filename': filename,
-                        'path': filepath,
-                        'size': os.path.getsize(filepath)
-                    }
-                    record_vuln_attempt("file_upload", passed=True)
+                    # 读取最多 10MB，防止超大文件撑爆内存和磁盘
+                    file_data = file.read(10 * 1024 * 1024)
+                    if len(file_data) >= 10 * 1024 * 1024:
+                        error = "文件过大（超过10MB），拒绝上传"
+                        record_vuln_attempt("file_upload", passed=False)
+                    else:
+                        filepath = os.path.join(upload_dir, filename)
+                        with open(filepath, 'wb') as f:
+                            f.write(file_data)
+                        success = {
+                            'filename': filename,
+                            'path': filepath,
+                            'size': os.path.getsize(filepath)
+                        }
+                        record_vuln_attempt("file_upload", passed=True)
                 except Exception as e:
                     app_logger.error(f"file_upload: 文件保存失败: {e}")
                     error = f"文件上传失败: {str(e)}"
@@ -2814,6 +2857,17 @@ def modules_page():
 # AI 网络安全攻防模块
 # =========================
 
+# 模块级 ModelRouter 单例（避免每次请求创建新客户端）
+_AI_ROUTER = None
+
+def _get_ai_router():
+    """获取或懒加载 AI 模型路由器（cloud_only 模式）"""
+    global _AI_ROUTER
+    if _AI_ROUTER is None:
+        from model_router import ModelRouter
+        _AI_ROUTER = ModelRouter(mode="cloud_only")
+    return _AI_ROUTER
+
 # AI 攻防系统提示词
 AI_ATTACK_DEFENSE_PROMPT = """你是一个专业的 AI 网络安全攻防助手，运行在网络安全培训平台上。
 你的任务是帮助用户在授权的靶场环境中进行自动化渗透测试和安全攻防演练。
@@ -2848,7 +2902,32 @@ AI_ATTACK_DEFENSE_PROMPT = """你是一个专业的 AI 网络安全攻防助手�
 用户角色: 安全研究员"""
 
 # AI 攻防会话历史
-attack_sessions: dict = {}  # session_id -> [messages]
+# 格式: {session_id: {"messages": [...], "last_active": timestamp}}
+attack_sessions: dict = {}
+_SESSION_MAX_COUNT = 100      # 最多保留 100 个会话
+_SESSION_IDLE_TIMEOUT = 3600  # 1 小时未活动自动清除
+_LAST_SESSION_CLEANUP = 0
+
+
+def _cleanup_old_sessions():
+    """清理超时未活跃的会话，防止内存泄漏"""
+    global _LAST_SESSION_CLEANUP
+    now = time.time()
+    if now - _LAST_SESSION_CLEANUP < 300:  # 每 5 分钟最多清理一次
+        return
+    _LAST_SESSION_CLEANUP = now
+    # 先按超时清理
+    stale = [k for k, v in attack_sessions.items()
+             if now - v.get("last_active", 0) > _SESSION_IDLE_TIMEOUT]
+    for k in stale:
+        attack_sessions.pop(k, None)
+    # 如果还超上限，清除最不活跃的
+    if len(attack_sessions) > _SESSION_MAX_COUNT:
+        sorted_keys = sorted(attack_sessions.keys(),
+                           key=lambda k: attack_sessions[k].get("last_active", 0))
+        for k in sorted_keys[:len(attack_sessions) - _SESSION_MAX_COUNT + 10]:
+            attack_sessions.pop(k, None)
+
 
 @app.route("/ai-attack")
 @login_required
@@ -2861,6 +2940,7 @@ def ai_attack_page():
 @login_required
 def api_ai_attack_chat():
     """AI 攻防对话接口"""
+    _cleanup_old_sessions()  # 定期清理过期会话，防止内存泄漏
     data = request.get_json()
     user_message = data.get("message", "").strip()
     session_id = data.get("session_id", f"attack_{session.get('user_id')}")
@@ -2871,9 +2951,11 @@ def api_ai_attack_chat():
 
     # 初始化会话
     if session_id not in attack_sessions:
-        attack_sessions[session_id] = []
+        attack_sessions[session_id] = {"messages": [], "last_active": time.time()}
 
-    history = attack_sessions[session_id]
+    session_data = attack_sessions[session_id]
+    session_data["last_active"] = time.time()
+    history = session_data["messages"]
     if len(history) > 30:
         history = history[-30:]
 
@@ -2884,10 +2966,12 @@ def api_ai_attack_chat():
     ] + history + [{"role": "user", "content": user_message}]
 
     try:
-        # 调用 AI 模型
-        from model_router import ModelRouter
-        router = ModelRouter(mode="cloud_first")
+        # 调用 AI 模型（模块级单例，httpx.Timeout(connect=5s) 内置超时保护）
+        router = _get_ai_router()
         result = router.chat(messages=messages, temperature=0.7, max_tokens=4096)
+
+        if not result.get("success"):
+            raise RuntimeError(f"模型调用失败: {result.get('error', '未知错误')}")
 
         reply = result.get("content", "")
         model_used = result.get("model", "unknown")
@@ -2895,7 +2979,8 @@ def api_ai_attack_chat():
         # 保存历史
         history.append({"role": "user", "content": user_message})
         history.append({"role": "assistant", "content": reply})
-        attack_sessions[session_id] = history
+        session_data["messages"] = history
+        session_data["last_active"] = time.time()
 
         # 解析操作指令
         operations = _parse_attack_commands(reply)
@@ -2908,6 +2993,7 @@ def api_ai_attack_chat():
         })
 
     except Exception as e:
+        app_logger.error(f"AI 攻防模型调用失败: {e}")
         # 回退：无 AI 时的本地分析
         fallback_reply = _fallback_attack_analysis(user_message, target)
         return jsonify({
@@ -2984,17 +3070,24 @@ def _execute_attack_operation(op_type: str, params: str) -> str:
         if not url.startswith("http"):
             url = "http://" + url
         try:
-            from concurrent.futures import ThreadPoolExecutor, as_completed
+            from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as _FTE2
             DEFAULT_DICT = ["admin", "login", "index.php", "backup", "db", "config", ".git", "robots.txt",
                            "wp-admin", "shell.php", "upload", "api", "test", "dev", "console", "phpinfo.php"]
             results = []
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            executor = ThreadPoolExecutor(max_workers=10)
+            try:
                 future_map = {executor.submit(network_scan.scan_dir, url, path, 3): path for path in DEFAULT_DICT}
-                for future in as_completed(future_map):
-                    r = future.result()
-                    if r:
-                        path, code, size = r
-                        results.append(f"  [{code}] {path} ({size}字节)")
+                for future in as_completed(future_map, timeout=20):
+                    try:
+                        r = future.result(timeout=5)
+                        if r:
+                            path, code, size = r
+                            results.append(f"  [{code}] {path} ({size}字节)")
+                    except _FTE2:
+                        pass
+            except _FTE2:
+                pass
+            executor.shutdown(wait=False)
             if results:
                 return "目录扫描结果:\n" + "\n".join(results)
             return "未发现常见目录"
@@ -3051,6 +3144,8 @@ def _execute_attack_operation(op_type: str, params: str) -> str:
 
     elif op_type == "cmd_run_command":
         cmd = params.strip()
+        if len(cmd) > 500:
+            return "命令过长（最大500字符），拒绝执行"
         try:
             import subprocess
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
